@@ -62,53 +62,53 @@ Supports SSL, but doesnt use it by default (not necessary as sensitive Data is p
   * `RemoteDesktopAuthentication`
   * `PrivateKeyArchival`
 
-### Sample: Creating a Certificate Hierarchy in a 3-Liner
+### Sample: Creating a PKI Hierarchy in a 3-Liner
 
 ```powershell
-$a = New-CertificateRequest -CA -CommonName "Root CA" -SelfSign
-$b = New-CertificateRequest -CA -CommonName "Sub CA" -SigningCert $a -PathLength 0
-$c = New-CertificateRequest -Eku "ServerAuth" -CommonName "www.demo.org" -DnsName "www.demo.org" -SigningCert $b
+$a = New-CertificateRequest -CA -Subject "CN=Root CA" -SelfSign
+$b = New-CertificateRequest -CA -Subject "CN=Sub CA" -SigningCert $a -PathLength 0
+$c = New-CertificateRequest -Eku "ServerAuthentication" -Subject "CN=www.demo.org" -Dns "www.demo.org" -SigningCert $b
 $a,$b,$c
 ```
 
 ### Sample: Demonstrating a Path length Constraint violation
 
 ```powershell
-$a = New-CertificateRequest -CA -CommonName "Root CA" -SelfSign
-$b = New-CertificateRequest -CA -CommonName "Sub CA" -SigningCert $a -PathLength 0
-$c = New-CertificateRequest -CA -CommonName "Invalid Path Length CA" -SigningCert $b
-$d = New-CertificateRequest -Eku "ServerAuth" -CommonName "Invalid Path Length Certificate" -DnsName "www.demo.org" -SigningCert $c
+$a = New-CertificateRequest -CA -Subject "CN=Root CA" -SelfSign
+$b = New-CertificateRequest -CA -Subject "CN=Sub CA" -SigningCert $a -PathLength 0
+$c = New-CertificateRequest -CA -Subject "CN=Invalid Path Length CA" -SigningCert $b
+$d = New-CertificateRequest -Eku "ServerAuthentication" -Subject "CN=Invalid Path Length Certificate" -Dns "www.demo.org" -SigningCert $c
 $a,$b,$c,$d
 ```
 
 ### Sample: Demonstrating an EKU Constraint violation
 
 ```powershell
-$a = New-CertificateRequest -CA -CommonName "Root CA" -SelfSign
-$b = New-CertificateRequest -CA -Eku "ClientAuth" -CommonName "Sub CA 1" -SigningCert $a
-$c = New-CertificateRequest -Eku "ServerAuth" -CommonName "Invalid EKU Certificate" -DnsName "www.demo.org" -SigningCert $b
+$a = New-CertificateRequest -CA -Subject "CN=Root CA" -SelfSign
+$b = New-CertificateRequest -CA -Eku "ClientAuthentication" -Subject "CN=Sub CA 1" -SigningCert $a
+$c = New-CertificateRequest -Eku "ServerAuthentication" -Subject "CN=Invalid EKU Certificate" -Dns "www.demo.org" -SigningCert $b
 $a,$b,$c
 ```
 
-### Sample: Creating a Certificate Signing Request (CSR) for a Web Server Certificate containing multiple SANs of Type DNSName
+### Sample: Creating a Certificate Signing Request (CSR) for a Web Server Certificate containing multiple SANs of Type DnsName and IPAdress
 
 ```powershell
 New-CertificateRequest ´
-    -Eku ServerAuth ´
-    -DnsName "web1.fabrikam.com","web2.fabrikam.com","web3.fabrikam.com" ´
-    -IP "192.168.0.1" ´
-    -KeyLength 4096 ´ |
-    Out-File CertificateRequestFile.csr -Encoding ascii
+-Eku ServerAuth ´
+-Dns "web1.fabrikam.com","web2.fabrikam.com","web3.fabrikam.com" ´
+-IP "192.168.0.1" ´
+-KeyLength 4096 ´ |
+Out-File CertificateRequestFile.csr -Encoding ascii
 ```
 
-### Sample: Creating a manual OCSP Request specifying AKI and a HSM
+### Sample: Creating a manual OCSP Request specifying AKI and a Hardware Security Module (HSM) Key Storage Provider (KSP)
 
 ```powershell
 New-CertificateRequest ´
-    -CommonName "My-Responder" ´
-    -Ksp "nCipher Security World Key Storage Provider" ´
-    -Eku "OCSPSigning" ´
-    -Aki "060DDD83737C311EDA5E5B677D8C4D663ED5C5BF" ´
-    -KeyLength 4096 |
-    Out-File CertificateRequestFile.csr -Encoding ascii
+-Subject "CN=My-Responder" ´
+-Ksp "nCipher Security World Key Storage Provider" ´
+-Eku "OCSPSigning" ´
+-Aki "060DDD83737C311EDA5E5B677D8C4D663ED5C5BF" ´
+-KeyLength 4096 |
+Out-File CertificateRequestFile.csr -Encoding ascii
 ```
