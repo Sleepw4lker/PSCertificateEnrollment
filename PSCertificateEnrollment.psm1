@@ -52,7 +52,7 @@ New-Variable -Option Constant -Name XCN_CERT_NAME_STR_NONE -Value 0
 New-Variable -Option Constant -Name XCN_CERT_NAME_STR_FORCE_UTF8_DIR_STR_FLAG -Value 0x80000
 New-Variable -Option Constant -Name XCN_CERT_NAME_STR_DISABLE_UTF8_DIR_STR_FLAG -Value 0x100000
 
-# https://blog.css-security.com/blog/creating-a-self-signed-ssl-certificate-using-powershell
+# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-alternativenametype
 New-Variable -Option Constant -Name XCN_CERT_ALT_NAME_UNKNOWN -Value 0
 New-Variable -Option Constant -Name XCN_CERT_ALT_NAME_OTHER_NAME -Value 1
 New-Variable -Option Constant -Name XCN_CERT_ALT_NAME_RFC822_NAME -Value 2
@@ -106,6 +106,27 @@ New-Variable -Option Constant -Name XCN_OID_WHQL_CRYPTO -Value "1.3.6.1.4.1.311.
 # Own Definition
 New-Variable -Option Constant -Name XCN_OID_KP_KDC -Value "1.3.6.1.5.2.3.5"
 New-Variable -Option Constant -Name XCN_OID_KP_RDC -Value "1.3.6.1.4.1.311.54.1.2"
+
+# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionsmimecapabilities
+New-Variable -Option Constant -Name XCN_OID_OIWSEC_desCBC -Value "1.3.14.3.2.7"
+New-Variable -Option Constant -Name XCN_OID_RSA_DES_EDE3_CBC -Value "1.2.840.113549.3.7"
+New-Variable -Option Constant -Name XCN_OID_RSA_RC2CBC -Value "1.2.840.113549.3.2"
+New-Variable -Option Constant -Name XCN_OID_RSA_RC4 -Value "1.2.840.113549.3.4"
+New-Variable -Option Constant -Name XCN_OID_RSA_SMIMEalgCMS3DESwrap -Value "1.2.840.113549.1.9.16.3.6"
+New-Variable -Option Constant -Name XCN_OID_RSA_SMIMEalgCMSRC2wrap -Value "1.2.840.113549.1.9.16.3.7"
+New-Variable -Option Constant -Name XCN_OID_NIST_AES128_CBC -Value "2.16.840.1.101.3.4.1.2"
+New-Variable -Option Constant -Name XCN_OID_NIST_AES192_CBC -Value "2.16.840.1.101.3.4.1.22"
+New-Variable -Option Constant -Name XCN_OID_NIST_AES256_CBC -Value "2.16.840.1.101.3.4.1.42"
+New-Variable -Option Constant -Name XCN_OID_NIST_AES128_WRAP -Value "2.16.840.1.101.3.4.1.5"
+New-Variable -Option Constant -Name XCN_OID_NIST_AES192_WRAP -Value "2.16.840.1.101.3.4.1.25"
+New-Variable -Option Constant -Name XCN_OID_NIST_AES256_WRAP -Value "2.16.840.1.101.3.4.1.45"
+
+# https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-gpnap/a48b02b2-2a10-4eb0-bed4-1807a6d2f5ad
+New-Variable -Option Constant -Name md5NoSign -Value "1.2.840.113549.2.5"
+New-Variable -Option Constant -Name sha1NoSign -Value "1.3.14.3.2.26"
+New-Variable -Option Constant -Name sha256NoSign -Value "2.16.840.1.101.3.4.2.1"
+New-Variable -Option Constant -Name sha384NoSign -Value "2.16.840.1.101.3.4.2.2"
+New-Variable -Option Constant -Name sha512NoSign -Value "2.16.840.1.101.3.4.2.3"
 
 # https://msdn.microsoft.com/en-us/library/windows/desktop/aa374936(v=vs.85).aspx
 New-Variable -Option Constant -Name XCN_CRYPT_STRING_BASE64HEADER -Value 0
@@ -209,7 +230,7 @@ New-Variable -Option Constant -Name SCEPFailInfo -Value @(
 )
 
 # https://msdn.microsoft.com/en-us/library/windows/desktop/aa378132(v=vs.85).aspx
-New-Variable -Option Constant EkuNameToOidTable -Value @{
+New-Variable -Option Constant -Name EkuNameToOidTable -Value @{
 
     EnrollmentAgent = $XCN_OID_ENROLLMENT_AGENT
     ClientAuthentication = $XCN_OID_PKIX_KP_CLIENT_AUTH
@@ -233,6 +254,28 @@ New-Variable -Option Constant EkuNameToOidTable -Value @{
     
 }
 
+New-Variable -Option Constant -Name SmimeCapabilityToOidTable -Value @{
+
+    des = $XCN_OID_OIWSEC_desCBC
+    des3 = $XCN_OID_RSA_DES_EDE3_CBC
+    rc2 = $XCN_OID_RSA_RC2CBC
+    rc4 = $XCN_OID_RSA_RC4
+    des3wrap = $XCN_OID_RSA_SMIMEalgCMS3DESwrap
+    rc2wrap = $XCN_OID_RSA_SMIMEalgCMSRC2wrap
+    aes128 = $XCN_OID_NIST_AES128_CBC
+    aes192 = $XCN_OID_NIST_AES192_CBC
+    aes256 = $XCN_OID_NIST_AES256_CBC
+    aes128wrap = $XCN_OID_NIST_AES128_WRAP
+    aes192wrap = $XCN_OID_NIST_AES192_WRAP
+    aes256wrap = $XCN_OID_NIST_AES256_WRAP
+    md5 = $md5NoSign
+    sha1 = $sha1NoSign
+    sha256 = $sha256NoSign
+    sha384 = $sha384NoSign
+    sha512 = $sha512NoSign
+  
+}
+
 $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 
 # Import Public Functions
@@ -249,3 +292,5 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Get-Asn1LengthOctets.ps1
 . $ModuleRoot\Functions\New-AiaExtension.ps1
 . $ModuleRoot\Functions\New-CdpExtension.ps1
+
+write-host $XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME

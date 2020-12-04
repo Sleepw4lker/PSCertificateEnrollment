@@ -24,6 +24,10 @@
     Specifies one or more User Principal Names to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
     May be left Empty if you specify a Subject, DnsName or IP instead.
 
+    .PARAMETER Email
+    Specifies one or more E-Mail addresses (RFC 822) to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
+    May be left Empty if you specify a Subject, DnsName, Upn or IP instead.
+
     .PARAMETER IP
     Specifies or more IP Addresses to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
     May be left Empty if you specify a Subject, DnsName or Upn instead.
@@ -99,6 +103,13 @@ Function Get-NDESCertificate {
         [ValidateNotNullOrEmpty()]
         [mailaddress[]]
         $Upn,
+
+        [Parameter(ParameterSetName="NewRequest",Mandatory=$False)]
+        [Alias("RFC822Name")]
+        [Alias("E-Mail")]
+        [ValidateNotNullOrEmpty()]
+        [mailaddress[]]
+        $Email,
 
         [Alias("IPAddress")]
         [Parameter(Mandatory=$False)]
@@ -268,7 +279,7 @@ Function Get-NDESCertificate {
 
             # New Certificate Request
 
-            If ((-not $Dns) -and (-not $Upn) -and (-not $IP) -and ((-not $Subject) -or ($Subject -eq "CN="))) {
+            If ((-not $Dns) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and ((-not $Subject) -or ($Subject -eq "CN="))) {
                 Write-Error -Message "You must provide an Identity, either in Form ob a Subject or Subject Alternative Name!"
                 return
             }
@@ -289,7 +300,7 @@ Function Get-NDESCertificate {
             }
 
             # Set the Subject Alternative Names Extension if specified as Argument
-            If ($Upn -or $Dns -or $IP) {
+            If ($Upn -or $Email -or $Dns -or $IP) {
 
                 $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
                 $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
@@ -304,6 +315,19 @@ Function Get-NDESCertificate {
                         $Entry
                     )
                     $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+    
+                }
+
+                Foreach ($Entry in $Email) {
+            
+                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                    $AlternativeNameObject.InitializeFromString(
+                        $XCN_CERT_ALT_NAME_RFC822_NAME, 
+                        $Entry
+                    )
+                    $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
     
                 }
     
@@ -315,6 +339,7 @@ Function Get-NDESCertificate {
                         $Entry
                     )
                     $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
     
                 }
 
@@ -327,6 +352,7 @@ Function Get-NDESCertificate {
                         [Convert]::ToBase64String($Entry.GetAddressBytes())
                     )
                     $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
     
                 }
                 

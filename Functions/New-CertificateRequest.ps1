@@ -20,15 +20,22 @@
 
     .PARAMETER Dns
     Specifies one or more DNS Names to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
-    May be left Empty if you specify a Subject, Upn or IP instead.
+    May be left Empty if you specify a Subject, Upn, Email or IP instead.
 
     .PARAMETER Upn
     Specifies one or more User Principal Names to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
-    May be left Empty if you specify a Subject, DnsName or IP instead.
+    May be left Empty if you specify a Subject, DnsName, Email or IP instead.
+
+    .PARAMETER Email
+    Specifies one or more E-Mail addresses (RFC 822) to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
+    May be left Empty if you specify a Subject, DnsName, Upn or IP instead.
 
     .PARAMETER IP
     Specifies or more IP Addresses to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
-    May be left Empty if you specify a Subject, DnsName or Upn instead.
+    May be left Empty if you specify a Subject, DnsName, Email or Upn instead.
+
+    .PARAMETER Smime
+    Specifies the S/MIME Capabilities the requestor supports.
 
     .PARAMETER Aki
     Specifies the Authority Key Identifier Attribute to be included in the Request.
@@ -158,11 +165,42 @@ Function New-CertificateRequest {
         [mailaddress[]]
         $Upn,
 
+        [Alias("RFC822Name")]
+        [Alias("E-Mail")]
+        [Parameter(Mandatory=$False)]
+        [ValidateNotNullOrEmpty()]
+        [mailaddress[]]
+        $Email,
+
         [Alias("IPAddress")]
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
         [System.Net.IPAddress[]]
         $IP,
+
+        [Alias("SmimeCapabilities")]
+        [Parameter(Mandatory=$False)]
+        [ValidateSet(
+            "des",
+            "des3",
+            "rc2",
+            "rc4",
+            "des3wrap",
+            "rc2wrap",
+            "aes128",
+            "aes192",
+            "aes256",
+            "aes128wrap",
+            "aes192wrap",
+            "aes256wrap",
+            "md5",
+            "sha1",
+            "sha256",
+            "sha384",
+            "sha512"
+        )]
+        [String[]]
+        $Smime,
 
         [Alias("AuthorityKeyIdentifier")]
         [Parameter(Mandatory=$False)]
@@ -286,7 +324,7 @@ Function New-CertificateRequest {
             }
         }
 
-        If ((-not $Dns) -and (-not $Upn) -and (-not $IP) -and ((-not $Subject) -or ($Subject -eq "CN="))) {
+        If ((-not $Dns) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and ((-not $Subject) -or ($Subject -eq "CN="))) {
             Write-Error -Message "You must provide an Identity, either in Form ob a Subject or Subject Alternative Name!"
             return
         }
@@ -500,39 +538,52 @@ Function New-CertificateRequest {
         }
 
         # Set the Subject Alternative Names Extension if specified as Argument
-        If ($Upn -or $Dns -or $IP) {
+        If ($Upn -or $Email -or $Dns -or $IP) {
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionalternativenames
             $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
             $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
 
+            # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
+
             Foreach ($Entry in $Upn) {
             
-                # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
                 $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
                 $AlternativeNameObject.InitializeFromString(
                     $XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME, 
                     $Entry
                 )
                 $Sans.Add($AlternativeNameObject)
+                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+
+            }
+
+            Foreach ($Entry in $Email) {
+            
+                $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                $AlternativeNameObject.InitializeFromString(
+                    $XCN_CERT_ALT_NAME_RFC822_NAME, 
+                    $Entry
+                )
+                $Sans.Add($AlternativeNameObject)
+                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
 
             }
 
             Foreach ($Entry in $Dns) {
             
-                # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
                 $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
                 $AlternativeNameObject.InitializeFromString(
                     $XCN_CERT_ALT_NAME_DNS_NAME,
                     $Entry
                 )
                 $Sans.Add($AlternativeNameObject)
+                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
 
             }
 
             Foreach ($Entry in $IP) {
 
-                # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
                 $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
                 $AlternativeNameObject.InitializeFromRawData(
                     $XCN_CERT_ALT_NAME_IP_ADDRESS,
@@ -540,6 +591,7 @@ Function New-CertificateRequest {
                     [Convert]::ToBase64String($Entry.GetAddressBytes())
                 )
                 $Sans.Add($AlternativeNameObject)
+                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
 
             }
             
@@ -549,6 +601,38 @@ Function New-CertificateRequest {
             # Adding the Extension to the Certificate
             $CertificateRequestObject.X509Extensions.Add($SubjectAlternativeNamesExtension)
 
+        }
+
+        # Set the S/MIME Capabilities Extension if specified as Argument
+        If ($Smime) {
+
+            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionsmimecapabilities
+            $SmimeExtension = New-Object -ComObject X509Enrollment.CX509ExtensionSmimeCapabilities
+
+            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ismimecapabilities
+            $SmimeCapabilitiesObject = New-Object -ComObject X509Enrollment.CSmimeCapabilities
+
+            $Smime | ForEach-Object -Process {
+
+                # The Bit length is only relevant for RC2 and RC4. We use the same defaults as Microsoft does.
+                If ($_ -in ("rc2","rc2wrap","rc4")) { $BitCount = 128 } Else { $BitCount = 0 }
+
+                $OidObject = New-Object -ComObject X509Enrollment.CObjectId
+                $OidObject.InitializeFromValue($SmimeCapabilityToOidTable[$_])
+
+                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ismimecapability-initialize
+                $SmimeCapabilityObject = New-Object -ComObject X509Enrollment.CSmimeCapability
+                $SmimeCapabilityObject.Initialize(
+                    $OidObject,
+                    $BitCount
+                )
+                $SmimeCapabilitiesObject.Add($SmimeCapabilityObject)
+            }
+
+            $SmimeExtension.InitializeEncode($SmimeCapabilitiesObject)
+
+            # Adding the Extension to the Certificate
+            $CertificateRequestObject.X509Extensions.Add($SmimeExtension)
         }
     
         # Set the Authority Key Identifier Extension if specified as Argument
