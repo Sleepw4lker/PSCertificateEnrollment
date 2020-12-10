@@ -292,5 +292,3 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Get-Asn1LengthOctets.ps1
 . $ModuleRoot\Functions\New-AiaExtension.ps1
 . $ModuleRoot\Functions\New-CdpExtension.ps1
-
-write-host $XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME
