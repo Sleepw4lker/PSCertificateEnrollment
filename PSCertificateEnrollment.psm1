@@ -290,5 +290,6 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Convert-StringToDER.ps1
 . $ModuleRoot\Functions\Convert-StringToHex.ps1
 . $ModuleRoot\Functions\Get-Asn1LengthOctets.ps1
+. $ModuleRoot\Functions\Get-CertificateHash.ps1
 . $ModuleRoot\Functions\New-AiaExtension.ps1
 . $ModuleRoot\Functions\New-CdpExtension.ps1

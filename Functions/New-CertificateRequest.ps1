@@ -238,7 +238,7 @@ Function New-CertificateRequest {
 
         [Alias("KeyStorageProvider")]
         [Parameter(Mandatory=$False)]
-        [ValidateScript({Test-KSPAvailability -Name $_})]
+        [ValidateScript({(Test-KSPAvailability -Name $_) -eq $True})]
         [String]
         $Ksp = "Microsoft Software Key Storage Provider",
 
@@ -248,7 +248,7 @@ Function New-CertificateRequest {
         $SigningCert,
 
         [Parameter(Mandatory=$False)]
-        [ValidateSet(512,1024,3072,4096,8192)]
+        [ValidateSet(512,1024,2048,3072,4096,8192)]
         [Int]
         $KeyLength = 2048,
 
@@ -405,7 +405,7 @@ Function New-CertificateRequest {
             # https://msdn.microsoft.com/en-us/library/windows/desktop/aa376832(v=vs.85).aspx
             $SignerCertificate =  New-Object -ComObject 'X509Enrollment.CSignerCertificate'
             $SignerCertificate.Initialize(
-                [int]($SigningCert.PSParentPath -match "Machine")+1,
+                [int]($SigningCert.PSParentPath -match "Machine"),
                 $X509PrivateKeyVerify.VerifyNone, # We did this already during Parameter Validation
                 $XCN_CRYPT_STRING_BASE64,
                 [Convert]::ToBase64String($SigningCert.RawData)

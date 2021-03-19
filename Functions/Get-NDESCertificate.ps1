@@ -133,15 +133,16 @@ Function Get-NDESCertificate {
 
         [Alias("KeyStorageProvider")]
         [Parameter(Mandatory=$False)]
-        [ValidateScript({Test-KSPAvailability -Name $_})]
+        [ValidateScript({(Test-KSPAvailability -Name $_) -eq $True})]
         [String]
         $Ksp = "Microsoft Software Key Storage Provider",
 
         [Parameter(Mandatory=$False)]
-        [ValidateSet(1024,3072,4096,8192)]
+        [ValidateSet(512,1024,2048,3072,4096,8192)]
         [Int]
         $KeyLength = 2048,
 
+        [Alias("Exportable")]
         [Parameter(Mandatory=$False)]
         [Switch]
         $PrivateKeyExportable = $False,
@@ -397,7 +398,7 @@ Function Get-NDESCertificate {
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-initialize
             $SCEPEnrollmentInterface.Initialize(
                 $CertificateRequestObject,
-                (($RootCaCert.GetCertHash("MD5") | ForEach-Object -Process { $_.ToString('X2') }) -join ''),
+                (Get-CertificateHash -Bytes $RootCaCert.RawData -HashAlgorithm "MD5"),
                 $XCN_CRYPT_STRING_HEX,
                 [Convert]::ToBase64String($GetCACert),
                 $XCN_CRYPT_STRING_BASE64
@@ -432,7 +433,7 @@ Function Get-NDESCertificate {
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-isignercertificate-initialize
             $SignerCertificate.Initialize(
-                [int]($SigningCert.PSParentPath -match "Machine")+1,
+                [int]($SigningCert.PSParentPath -match "Machine"),
                 $X509PrivateKeyVerify.VerifyNone, # We did this already during Parameter Validation
                 $XCN_CRYPT_STRING_BASE64,
                 [Convert]::ToBase64String($SigningCert.RawData)

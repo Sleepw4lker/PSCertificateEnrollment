@@ -19,9 +19,12 @@ Supported SCEP Implementations:
 Other SCEP Implementations should be easy to implement but I currently have none to test against.
 
 The following functions get exported:
-* [Get-NDESOTP](docs/Get-NDESOTP.md)
-* [Get-NDESCertificate](docs/Get-NDESCertificate.md)
-* [New-CertificateRequest](docs/New-CertificateRequest.md)
+* Get-NDESOTP
+* Get-NDESCertificate
+* New-CertificateRequest
+
+## How to Get
+PSCertificateEnrollment can be obtained via the [PowerShell Gallery](https://www.powershellgallery.com/packages/PSCertificateEnrollment).
 
 ## Get-NDESOTP
 Retrieves an One-Time-Password (OTP) from the NDES Server.
@@ -41,7 +44,9 @@ Supports SSL, but doesnt use it by default (not necessary as sensitive Data is p
 
 ## New-CertificateRequest
 
-* `New-CertificateRequest` crafts a Certificate based on the given Arguments. Can create self-signed Certificates as well as sign with a different Key, or output a Certificate Request for submission to a Certification Authority. You can specify the following Enhanced Key Usages (EKUs):
+* `New-CertificateRequest` builds a Certificate Request based on the given Arguments. Can also create self-signed Certificates as well as directly sign the request with a different Key.
+
+You can specify the following Enhanced Key Usages (EKUs):
   * `EnrollmentAgent`
   * `ClientAuthentication`
   * `CodeSigning`
@@ -93,22 +98,22 @@ $a,$b,$c
 ### Sample: Creating a Certificate Signing Request (CSR) for a Web Server Certificate containing multiple SANs of Type DnsName and IPAdress
 
 ```powershell
-New-CertificateRequest ´
--Eku ServerAuth ´
--Dns "web1.fabrikam.com","web2.fabrikam.com","web3.fabrikam.com" ´
--IP "192.168.0.1" ´
--KeyLength 4096 ´ |
+New-CertificateRequest `
+-Eku ServerAuth `
+-Dns "web1.fabrikam.com","web2.fabrikam.com","web3.fabrikam.com" `
+-IP "192.168.0.1" `
+-KeyLength 4096 |
 Out-File CertificateRequestFile.csr -Encoding ascii
 ```
 
 ### Sample: Creating a manual OCSP Request specifying AKI and a Hardware Security Module (HSM) Key Storage Provider (KSP)
 
 ```powershell
-New-CertificateRequest ´
--Subject "CN=My-Responder" ´
--Ksp "nCipher Security World Key Storage Provider" ´
--Eku "OCSPSigning" ´
--Aki "060DDD83737C311EDA5E5B677D8C4D663ED5C5BF" ´
+New-CertificateRequest `
+-Subject "CN=My-Responder" `
+-Ksp "nCipher Security World Key Storage Provider" `
+-Eku "OCSPSigning" `
+-Aki "060DDD83737C311EDA5E5B677D8C4D663ED5C5BF" `
 -KeyLength 4096 |
 Out-File CertificateRequestFile.csr -Encoding ascii
 ```
