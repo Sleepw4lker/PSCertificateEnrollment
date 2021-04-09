@@ -80,31 +80,48 @@ Function Get-NDESCertificate {
         $ComputerName,
 
         [Alias("Machine")]
-        [Parameter(ParameterSetName="NewRequest",Mandatory=$False)]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
         [Switch]
         $MachineContext = $False,
 
-        [Parameter(ParameterSetName="NewRequest",Mandatory=$False)]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
         [ValidateNotNullOrEmpty()]
         [String]
         $Subject,
 
-        [Parameter(ParameterSetName="NewRequest",Mandatory=$False)]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
         [Alias("DnsName")]
         [ValidateNotNullOrEmpty()]
-        [ValidateScript({$_ | ForEach-Object -Process {
+        [ValidateScript({
+            $_ | ForEach-Object -Process {
             [System.Uri]::CheckHostName($_) -eq [System.UriHostnameType]::Dns
-        }})]
+            }
+        })]
         [String[]]
         $Dns,
 
-        [Parameter(ParameterSetName="NewRequest",Mandatory=$False)]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
         [Alias("UserPrincipalName")]
         [ValidateNotNullOrEmpty()]
         [mailaddress[]]
         $Upn,
 
-        [Parameter(ParameterSetName="NewRequest",Mandatory=$False)]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
         [Alias("RFC822Name")]
         [Alias("E-Mail")]
         [ValidateNotNullOrEmpty()]
@@ -117,7 +134,10 @@ Function Get-NDESCertificate {
         [System.Net.IPAddress[]]
         $IP,
 
-        [Parameter(ParameterSetName="NewRequest",Mandatory=$False)]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
         [ValidateNotNullOrEmpty()]
         [String]
         $ChallengePassword,
@@ -126,14 +146,17 @@ Function Get-NDESCertificate {
             ParameterSetName="RenewalRequest",
             ValuefromPipeline = $True,
             Mandatory=$False
-        )]
+            )]
         [ValidateScript({($_.HasPrivateKey) -and ($null -ne $_.PSParentPath)})]
         [System.Security.Cryptography.X509Certificates.X509Certificate2]
         $SigningCert,
 
         [Alias("KeyStorageProvider")]
         [Parameter(Mandatory=$False)]
-        [ValidateScript({(Test-KSPAvailability -Name $_) -eq $True})]
+        [ValidateScript({
+            $Ksp = $_
+            [bool](Get-KeyStorageProvider | Where-Object { $_.Name -eq $Ksp })}
+        )]
         [String]
         $Ksp = "Microsoft Software Key Storage Provider",
 
@@ -195,7 +218,7 @@ Function Get-NDESCertificate {
             $GetCACaps = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACaps").Content
         }
         Catch {
-            Write-Error -Message $PSItem.Exception
+            Write-Error -Message $PSItem.Exception.Message
             return
         }
 
@@ -208,7 +231,7 @@ Function Get-NDESCertificate {
             $Pkcs7CaCert.Decode($GetCACert)
         }
         Catch {
-            Write-Error -Message $PSItem.Exception
+            Write-Error -Message $PSItem.Exception.Message
             return
         }
 
@@ -256,7 +279,7 @@ Function Get-NDESCertificate {
                 $CertificateRequestObject.InitializeFromCertificate(
                     [int]($SigningCert.PSParentPath -match "Machine")+1,
                     [Convert]::ToBase64String($SigningCert.RawData),
-                    $XCN_CRYPT_STRING_BASE64,
+                    $EncodingType.XCN_CRYPT_STRING_BASE64,
                     $InheritOptions
                 )
 
@@ -286,7 +309,7 @@ Function Get-NDESCertificate {
             }
 
             $CertificateRequestObject.Initialize(
-                [int]($MachineContext.IsPresent) +1
+                [int]($MachineContext.IsPresent)+1
             )
 
             Try {
@@ -312,7 +335,7 @@ Function Get-NDESCertificate {
 
                     $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
                     $AlternativeNameObject.InitializeFromString(
-                        $XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME, 
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME, 
                         $Entry
                     )
                     $Sans.Add($AlternativeNameObject)
@@ -324,7 +347,7 @@ Function Get-NDESCertificate {
             
                     $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
                     $AlternativeNameObject.InitializeFromString(
-                        $XCN_CERT_ALT_NAME_RFC822_NAME, 
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_RFC822_NAME, 
                         $Entry
                     )
                     $Sans.Add($AlternativeNameObject)
@@ -336,7 +359,7 @@ Function Get-NDESCertificate {
 
                     $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
                     $AlternativeNameObject.InitializeFromString(
-                        $XCN_CERT_ALT_NAME_DNS_NAME,
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_DNS_NAME,
                         $Entry
                     )
                     $Sans.Add($AlternativeNameObject)
@@ -348,8 +371,8 @@ Function Get-NDESCertificate {
 
                     $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
                     $AlternativeNameObject.InitializeFromRawData(
-                        $XCN_CERT_ALT_NAME_IP_ADDRESS,
-                        $XCN_CRYPT_STRING_BASE64,
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_IP_ADDRESS,
+                        $EncodingType.XCN_CRYPT_STRING_BASE64,
                         [Convert]::ToBase64String($Entry.GetAddressBytes())
                     )
                     $Sans.Add($AlternativeNameObject)
@@ -383,8 +406,11 @@ Function Get-NDESCertificate {
         $CertificateRequestObject.PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
         $CertificateRequestObject.PrivateKey.ProviderName = $Ksp
 
-        # Identify the Root CA Certificate that was delivered with the Chain
-        # We must specify it's MD5 Hash when initializing the IX509SCEPEnrollment Interface
+        <#
+            Identify the Root CA Certificate that was delivered with the Chain
+            https://tools.ietf.org/html/rfc5280#section-6.1
+            A certificate is self-issued if the same DN appears in the subject and issuer fields 
+        #>
         $RootCaCert = $Pkcs7CaCert.Certificates | Where-Object { $_.Subject -eq $_.Issuer }
 
         # Initialize the IX509SCEPEnrollment Interface
@@ -399,14 +425,14 @@ Function Get-NDESCertificate {
             $SCEPEnrollmentInterface.Initialize(
                 $CertificateRequestObject,
                 (Get-CertificateHash -Bytes $RootCaCert.RawData -HashAlgorithm "MD5"),
-                $XCN_CRYPT_STRING_HEX,
+                $EncodingType.XCN_CRYPT_STRING_HEX,
                 [Convert]::ToBase64String($GetCACert),
-                $XCN_CRYPT_STRING_BASE64
+                $EncodingType.XCN_CRYPT_STRING_BASE64
             )
 
         }
         Catch {
-            Write-Error -Message $PSItem.Exception
+            Write-Error -Message $PSItem.Exception.Message
             return
         }
 
@@ -435,7 +461,7 @@ Function Get-NDESCertificate {
             $SignerCertificate.Initialize(
                 [int]($SigningCert.PSParentPath -match "Machine"),
                 $X509PrivateKeyVerify.VerifyNone, # We did this already during Parameter Validation
-                $XCN_CRYPT_STRING_BASE64,
+                $EncodingType.XCN_CRYPT_STRING_BASE64,
                 [Convert]::ToBase64String($SigningCert.RawData)
             )
             $SCEPEnrollmentInterface.SignerCertificate = $SignerCertificate
@@ -443,7 +469,9 @@ Function Get-NDESCertificate {
 
         # Building the PKCS7 Message for the SCEP Enrollment
         # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-createrequestmessage
-        $SCEPRequestMessage = $SCEPEnrollmentInterface.CreateRequestMessage($XCN_CRYPT_STRING_BASE64)
+        $SCEPRequestMessage = $SCEPEnrollmentInterface.CreateRequestMessage(
+            $EncodingType.XCN_CRYPT_STRING_BASE64
+            )
         
         # Submission to the NDES Server
         Try {
@@ -474,7 +502,7 @@ Function Get-NDESCertificate {
 
         }
         Catch {
-            Write-Error -Message $PSItem.Exception
+            Write-Error -Message $PSItem.Exception.Message
             return
         }
         
@@ -484,7 +512,7 @@ Function Get-NDESCertificate {
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-processresponsemessage
             $Disposition = $SCEPEnrollmentInterface.ProcessResponseMessage(
                 $SCEPResponse,
-                $XCN_CRYPT_STRING_BASE64
+                $EncodingType.XCN_CRYPT_STRING_BASE64
                 )
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certpol/ne-certpol-x509scepdisposition
@@ -504,28 +532,23 @@ Function Get-NDESCertificate {
                         $ErrorMessage += "SCEP Failure Information: $($FailInfo.Message) ($($FailInfo.Code)) $($FailInfo.Description)`n"
                         $ErrorMessage += "Additional Information returned by the Server: $($SCEPEnrollmentInterface.Status().Text)`n"
 
-                        # CERT_E_WRONG_USAGE
-                        If ($SCEPEnrollmentInterface.Status().Text -match "0x800b0110") {
+                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERT_E_WRONG_USAGE) {
                             $ErrorMessage += "Possible reason(s): The Challenge Password has been used already."
                         }
 
-                        # TRUST_E_CERT_SIGNATURE
-                        If ($SCEPEnrollmentInterface.Status().Text -match "0x80096004") {
+                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.TRUST_E_CERT_SIGNATURE) {
                             $ErrorMessage += "Possible reason(s): The NDES Server requires a Challenge Password but none was supplied."
                         }
 
-                        # ERROR_NOT_FOUND
-                        If ($SCEPEnrollmentInterface.Status().Text -match "0x80070490") {
+                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.ERROR_NOT_FOUND) {
                             $ErrorMessage += "Possible reason(s): The Challenge Password supplied is unknown to the NDES Server, or it has been used already."
                         }
 
-                        # CERTSRV_E_BAD_REQUESTSUBJECT
-                        If ($SCEPEnrollmentInterface.Status().Text -match "0x80094001") {
+                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERTSRV_E_BAD_REQUESTSUBJECT) {
                             $ErrorMessage += "Possible reason(s): The CA denied your request because an invalid Subject was requested."
                         }
 
-                        # RPC_S_SERVER_UNAVAILABLE
-                        If ($SCEPEnrollmentInterface.Status().Text -match "0x800706ba") {
+                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.RPC_S_SERVER_UNAVAILABLE) {
                             $ErrorMessage += "Possible reason(s): The NDES Server was unable to contact the Certification Authority."
                         }
                     }
@@ -548,12 +571,14 @@ Function Get-NDESCertificate {
 
                 $X509SCEPDisposition.SCEPDispositionSuccess {
 
-                    # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-get_certificate
-                    $CertificateBase64 = $SCEPEnrollmentInterface.Certificate($XCN_CRYPT_STRING_BASE64)
-
                     # We load the Certificate into an X509Certificate2 Object
+                    # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-get_certificate
                     $CertificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-                    $CertificateObject.Import([Convert]::FromBase64String($CertificateBase64))
+                    $CertificateObject.Import(
+                        [Convert]::FromBase64String(
+                            $SCEPEnrollmentInterface.Certificate($EncodingType.XCN_CRYPT_STRING_BASE64)
+                            )
+                        )
 
                     # Return the resulting Certificate
                     If ($MachineContext.IsPresent -or ($SigningCert -and ($SigningCert.PSParentPath -match "Machine"))) {
@@ -568,7 +593,7 @@ Function Get-NDESCertificate {
 
         }
         Catch {
-            Write-Error -Message $PSItem.Exception
+            Write-Error -Message $PSItem.Exception.Message
             return  
         }
 

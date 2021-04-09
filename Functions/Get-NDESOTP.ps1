@@ -36,6 +36,7 @@ Function Get-NDESOTP {
         $NoSSL = $False,
 
         [Parameter(Mandatory=$False)]
+        [ValidateRange(1,64)]
         [Int]
         $PasswordLength = 8,
 
@@ -74,7 +75,7 @@ Function Get-NDESOTP {
             $NdesResponse = Invoke-WebRequest @Arguments
         }
         Catch {
-            Write-Error -Message $PSItem.Exception
+            Write-Error -Message $PSItem.Exception.Message
             return
         }
 
@@ -93,14 +94,14 @@ Function Get-NDESOTP {
                                 Select-Object -First 1)
 
                     If ($null -eq $Otp) {
-                        Write-Warning "No OTP found in HTTP Response. Check your Permissions and the -PasswordLength Parameter."
+                        Write-Error -Message "No OTP found in HTTP Response. Check your Permissions and the -PasswordLength Parameter."
                     }
                     Else {
                         return $Otp
                     }
                 }
                 default {
-                    Write-Error "Got HTTP Response $($NdesResponse.StatusCode)."
+                    Write-Error -Message "Got HTTP Response $($NdesResponse.StatusCode)."
                 }
             }
         }
