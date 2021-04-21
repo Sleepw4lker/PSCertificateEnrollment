@@ -1,4 +1,4 @@
-Function Convert-StringToHex {
+﻿Function Convert-StringToHex {
 
     # Converts each Character of a String to a Hexadecimal Representation of it's ASCII value
     [cmdletbinding()]

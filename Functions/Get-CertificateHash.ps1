@@ -36,13 +36,7 @@ function Get-CertificateHash {
 
         $HashBytes = $AlgorithmObject.ComputeHash($Bytes)
 
-        $HashString = [String]::Empty
-
-        $HashBytes | ForEach-Object -Process {
-            $HashString += $_.ToString("X")
-        }
-
-        return $HashString
+        return [System.BitConverter]::ToString($HashBytes).Replace("-", [String]::Empty);
 
     }
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Allows for un-archiving a previously archived Certificate.
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Returns BASE64 Encoded DER Object for the AIA Extension
 #>

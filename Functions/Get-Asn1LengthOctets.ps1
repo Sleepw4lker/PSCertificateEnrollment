@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Returns ASN.1 Length Octets for a given Object Length
     See http://luca.ntop.org/Teaching/Appunti/asn1.html

@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Allows for Submission of a Certificate Request to a Certification Authority.
     Allows for retrieval of a previously issued Certificate from a Certification Authority.
@@ -12,7 +12,7 @@
     .PARAMETER ConfigString
     The Comnfiguration String for the Certificate Authority to connect to, 
     in the Form of "<Hostname>\<Common-Name-of-CA>" for a RPC/DCOM Enrollment and
-    in for Form of "<https://<Hostname>/<Common-Name-of-CA>_CES_<Authentication-Type/service.svc/CES>"
+    in for Form of "https://<Hostname>/<Common-Name-of-CA>_CES_<Authentication-Type/service.svc/CES"
     for a WSTEP (Certificate Enrollment Web Service) Enrollment.
 
     .PARAMETER CertificateTemplate
@@ -61,6 +61,7 @@ Function Get-IssuedCertificate {
             Mandatory=$False
             )]
         [ValidateNotNullOrEmpty()]
+        # [ValidatePattern("^[0-9a-fA-F]$")] Clarify which characters are allowed
         [String]
         $CertificateTemplate,
         
@@ -228,6 +229,8 @@ Function Get-IssuedCertificate {
 
             $DispositionType.CR_DISP_ISSUED {
 
+                # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-getcertificate
+                # https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate2.import
                 $CertificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
                 $CertificateObject.Import(
                     [Convert]::FromBase64String(

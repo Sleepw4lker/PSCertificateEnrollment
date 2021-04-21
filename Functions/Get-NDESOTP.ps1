@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Requests an One-Time Password from an NDES Server.
 

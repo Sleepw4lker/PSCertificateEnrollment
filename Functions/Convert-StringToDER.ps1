@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Encodes a String in DER
 #>

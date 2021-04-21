@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Converts a DER String to a BASE64-encoded Byte Array
 #>

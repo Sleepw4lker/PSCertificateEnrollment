@@ -1,7 +1,7 @@
 # PSCertificateEnrollment
 
 PowerShell Module for various PKI-related tasks like:
-* Create Certificate Signing requests
+* Creating Certificate Signing requests
 * Creating Self-Signed Certificates or Certificates signed with a given Key
 * Signing a Certificate Request with an Enrollment Agent Certificate prior to Submission to a Certification Authority
 * Submitting Certificate Requests to a Certification Aurhority and retrieving the response
@@ -79,6 +79,13 @@ Get-NDESCertificate `
 -ChallengePassword "BDE00774A789610F"
 ```
 
+Example: Performing a SCEP Renewal Request (renewing an existing Certificate via SCEP)
+
+```powershell
+Get-ChildItem -Path Cert:\CurrentUser\My\85CF977C7E32CE808E9D92C61FDB9A43437DC4A2 | 
+Get-NDESCertificate -ComputerName "ndes01.intra.adcslabor.de"
+```
+
 ### New-CertificateRequest
 
 `New-CertificateRequest` builds a Certificate Request based on the given Arguments. Can also create self-signed Certificates as well as directly sign the request with a different Key.
@@ -133,7 +140,7 @@ $c = New-CertificateRequest -Eku "ServerAuthentication" -Subject "CN=Invalid EKU
 $a,$b,$c
 ```
 
-Example: Creating a Certificate Signing Request (CSR) for a Web Server Certificate with an ECDSA Key containing multiple SANs of Type DnsName and IPAdress
+Example: Creating a Certificate Signing Request (CSR) for a Web Server Certificate, using an ECDSA Key, containing multiple SANs of Type DnsName and IPAdress (and an empty Subject String)
 
 ```powershell
 New-CertificateRequest `
@@ -156,7 +163,7 @@ New-CertificateRequest `
 Out-File CertificateRequestFile.csr -Encoding ascii
 ```
 
-### New-SigneCertificateRequest
+### New-SignedCertificateRequest
 
 `New-SignedCertificateRequest` appends a Signature to a PKCS#10 Certificate Request. Can also append the RequesterName Attribute for Enroll on Behalf of (EOBO) processes.
 
@@ -170,7 +177,7 @@ $csr | New-SignedCertificateRequest -SigningCert $eacert
 
 ### Get-IssuedCertificate
 
-`Get-IssuedCertificate` allows for Submission of a Certificate Request to a Certification Authority. It  also allows for retrieval of a previously issued Certificate from a Certification Authority.
+`Get-IssuedCertificate` allows for Submission of a Certificate Request to a Certification Authority. It also allows for retrieval of a previously issued Certificate from a Certification Authority.
 
 Example: Creating a Certificate Request and submitting it to a Certification Authority
 
@@ -179,6 +186,14 @@ $csr = New-CertificateRequest -Subject "CN=Test"
 $csr | Get-IssuedCertificate `
 -ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1"
 -CertificateTemplate "ADCSLaborUser"
+```
+
+Example: Retrieving an issued Certificate for a previously submitted Certificate request
+
+```powershell
+Get-IssuedCertificate `
+-ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1"
+-RequestId 12345
 ```
 
 ### Install-IssuedCertificate
@@ -209,7 +224,7 @@ Get-KeyStorageProvider | Select-Object -Property Name
 
 `Undo-CertificateArchival` allows for un-archiving a previously archived Certificate.
 
-Example: Unarchive a Certificate
+Example: Unarchive an archived Certificate, identified by it's SHA-1 Thumbprint
 
 ```powershell
 Undo-CertificateArchival `

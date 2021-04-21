@@ -1,4 +1,4 @@
-<#
+﻿<#
     .SYNOPSIS
     Allows for installing a Certificate onto the local Machine after the 
     correspoiding certificate Request was approved by a Certification Authority.
