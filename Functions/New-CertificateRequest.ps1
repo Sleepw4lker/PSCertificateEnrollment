@@ -135,6 +135,7 @@ Function New-CertificateRequest {
             "EnrollmentAgent",
             "ClientAuthentication",
             "CodeSigning",
+            "LifeTimeSigning",
             "DocumentSigning",
             "DocumentEncryption",
             "EncryptingFileSystem",

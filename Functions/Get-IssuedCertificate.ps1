@@ -10,9 +10,9 @@
     The Request Identifier that was given to a previously submitted Certificate Request.
 
     .PARAMETER ConfigString
-    The Comnfiguration String for the Certificate Authority to connect to, 
-    in the Form of "<Hostname>\<Common-Name-of-CA>" for a RPC/DCOM Enrollment and
-    in for Form of "https://<Hostname>/<Common-Name-of-CA>_CES_<Authentication-Type/service.svc/CES"
+    The Comnfiguration String for the Certificate Authority to connect to, either
+    in the Form of "<Hostname>\<Common-Name-of-CA>" for a RPC/DCOM Enrollment or
+    in for Form of "https://<Hostname>/<Common-Name-of-CA>_CES_<Authentication-Type>/service.svc/CES"
     for a WSTEP (Certificate Enrollment Web Service) Enrollment.
 
     .PARAMETER CertificateTemplate
@@ -61,7 +61,6 @@ Function Get-IssuedCertificate {
             Mandatory=$False
             )]
         [ValidateNotNullOrEmpty()]
-        # [ValidatePattern("^[0-9a-fA-F]$")] Clarify which characters are allowed
         [String]
         $CertificateTemplate,
         
@@ -75,71 +74,77 @@ Function Get-IssuedCertificate {
         $ClientCertificate
     )
     
-    begin {
+    begin {}
+
+    process {
 
         $CertRequest = New-Object -ComObject CertificateAuthority.Request
 
+        # Configuring the Certificate Request Interface when using the WSTEP Protocol
         # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest3-setcredential
-        # WSTEP with Username and Password Authentication
-        If ($ConfigString.StartsWith("https://") -and 
-            $ConfigString.EndsWith("UsernamePassword/service.svc/CES", [System.StringComparison]::OrdinalIgnoreCase)
-        ) {
+        If ($ConfigString.StartsWith("https://")) { 
 
-            If ($Credential) {
+            # WSTEP with Username and Password Authentication
+            If ($ConfigString.EndsWith(
+                "UsernamePassword/service.svc/CES", 
+                [System.StringComparison]::OrdinalIgnoreCase
+                )) {
 
-                $CertRequest.SetCredential(
-                    [Int]$null, # no Window Handle
-                    $X509EnrollmentAuthFlags.X509AuthUsername,
-                    $Credential.UserName,
-                    [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+                If ($Credential) {
+
+                    $CertRequest.SetCredential(
+                        [Int]$null, # no Window Handle
+                        $X509EnrollmentAuthFlags.X509AuthUsername,
+                        $Credential.UserName,
+                        [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                            [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+                        )
                     )
-                )
 
+                }
+                Else {
+                    Write-Error -Message "You must provide Authentication Credentials."
+                    return
+                }
             }
-            Else {
-                Write-Error -Message "You must provide Authentication Credentials."
-                return
+
+            # WSTEP with Client Certificate Authentication
+            If ($ConfigString.EndsWith(
+                "Certificate/service.svc/CES", 
+                [System.StringComparison]::OrdinalIgnoreCase
+                )) {
+
+                If ($ClientCertificate) {
+
+                    $CertRequest.SetCredential(
+                        [Int]$null, # no Window Handle
+                        $X509EnrollmentAuthFlags.X509AuthCertificate,
+                        $ClientCertificate,
+                        [String]::Empty
+                    )
+
+                }
+                Else {
+                    Write-Error -Message "You must provide a Client Authentication Certificate Thumbprint."
+                    return
+                }
             }
-        }
 
-        # WSTEP with Client Certificate Authentication
-        If ($ConfigString.StartsWith("https://") -and 
-            $ConfigString.EndsWith("Certificate/service.svc/CES", [System.StringComparison]::OrdinalIgnoreCase)
-        ) {
-
-            If ($ClientCertificate) {
-
+            # WSTEP with Kerberos Authentication
+            If ($ConfigString.EndsWith(
+                "Kerberos/service.svc/CES", 
+                [System.StringComparison]::OrdinalIgnoreCase
+                )) {
+    
                 $CertRequest.SetCredential(
                     [Int]$null, # no Window Handle
-                    $X509EnrollmentAuthFlags.X509AuthCertificate,
-                    $ClientCertificate,
+                    $X509EnrollmentAuthFlags.X509AuthKerberos,
+                    [String]::Empty,
                     [String]::Empty
                 )
 
             }
-            Else {
-                Write-Error -Message "You must provide a Client Authentication Certificate Thumbprint."
-                return
-            }
         }
-
-        # WSTEP with Kerberos Authentication
-        If ($ConfigString.StartsWith("https://") -and 
-            $ConfigString.EndsWith("Kerberos/service.svc/CES", [System.StringComparison]::OrdinalIgnoreCase)
-        ) {
- 
-            $CertRequest.SetCredential(
-                [Int]$null, # no Window Handle
-                $X509EnrollmentAuthFlags.X509AuthKerberos,
-                [String]::Empty,
-                [String]::Empty
-            )
-
-        }
-    }
-    
-    process {
 
         # Submit a Certificate Request
         If ($CertificateRequest) {
@@ -295,9 +300,10 @@ Function Get-IssuedCertificate {
 
         }
 
+        [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($CertRequest))
+
     }
     
-    end {
-        [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($CertRequest))
-    }
+    end {}
+    
 }

@@ -4,13 +4,16 @@ PowerShell Module for various PKI-related tasks like:
 * Creating Certificate Signing requests
 * Creating Self-Signed Certificates or Certificates signed with a given Key
 * Signing a Certificate Request with an Enrollment Agent Certificate prior to Submission to a Certification Authority
-* Submitting Certificate Requests to a Certification Aurhority and retrieving the response
-* Installing issued Certificates
+* Submitting Certificate Requests to a Certification Authority via DCOM and WSTEP Protocols and retrieving the response
+* Installing issued Certificates after the Certificate Request has been approved by a Certificartion Authority
 * Requesting or Renewing User or Machine Certificates via the [Simple Certificate Enrollment Protocol (SCEP)](https://tools.ietf.org/html/draft-nourse-scep-23)
+* Identifying and configuring the Remote Desktop Session Host Certificate of a machine
 
 The module can be obtained via the [PowerShell Gallery](https://www.powershellgallery.com/packages/PSCertificateEnrollment).
 
-It is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any "certutil" or "openssl" command. No additional binary Code necessary to deploy.
+It is intended for Client-Side Tasks inside the Microsoft PKI Ecosystem. For managing a Microsoft Certification Authority, take a look at the awesome [PSPKI Module](https://github.com/PKISolutions/PSPKI).
+
+It is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any "certutil" or "openssl" command. No additional binary Code (e.g. a DLL etc.) necessary to deploy. The Module and it's files are digitally signed when obtaining it from the PowerShell Gallery.
 
 Supported Operating Systems
 
@@ -37,6 +40,8 @@ The following Commands are available:
 * `Install-IssuedCertificate`
 * `Get-KeyStorageProvider`
 * `Undo-CertificateArchival`
+* `Get-RemoteDesktopCertificate`
+* `Set-RemoteDesktopCertificate`
 
 ### Get-NDESOTP
 
@@ -94,6 +99,7 @@ You can specify the following Enhanced Key Usages (EKUs) by their friendly name:
   * `EnrollmentAgent`
   * `ClientAuthentication`
   * `CodeSigning`
+  * `LifeTimeSigning`
   * `DocumentSigning`
   * `DocumentEncryption`
   * `EncryptingFileSystem`
@@ -140,6 +146,17 @@ $c = New-CertificateRequest -Eku "ServerAuthentication" -Subject "CN=Invalid EKU
 $a,$b,$c
 ```
 
+Example: Creating a Certificate Signing Request (CSR) for a Domain Controller Certificate using a 3072 Bit RSA Key
+
+```powershell
+New-CertificateRequest `
+-MachineContext `
+-LeyLength 3072 `
+-Subject "CN=dc01.intra.adcslabor.de" `
+-Dns "dc01.intra.adcslabor.de","intra.adcslabor.de","INTRA" `
+-Eku KDCAuthentication,ServerAuthentication,ClientAuthentication,SmartcardLogon
+```
+
 Example: Creating a Certificate Signing Request (CSR) for a Web Server Certificate, using an ECDSA Key, containing multiple SANs of Type DnsName and IPAdress (and an empty Subject String)
 
 ```powershell
@@ -151,7 +168,7 @@ New-CertificateRequest `
 Out-File CertificateRequestFile.csr -Encoding ascii
 ```
 
-Example: Creating a manual OCSP Request specifying AKI and a Hardware Security Module (HSM) Key Storage Provider (KSP)
+Example: Creating a Certificate Signing Request (CSR) for an OCSP Responder, specifying the signing CA Certificate to be used via Authority Key Identifier (AKI) and a Hardware Security Module (HSM) Key Storage Provider (KSP)
 
 ```powershell
 New-CertificateRequest `
@@ -184,15 +201,25 @@ Example: Creating a Certificate Request and submitting it to a Certification Aut
 ```powershell
 $csr = New-CertificateRequest -Subject "CN=Test"
 $csr | Get-IssuedCertificate `
--ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1"
+-ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1" `
 -CertificateTemplate "ADCSLaborUser"
+```
+
+Example: Creating a Certificate Request and submitting it to a Certification Authority via WSTEP (aka Certificate Enrollment Web Service, CES) using Username and Password Authentication
+
+```powershell
+$csr = New-CertificateRequest -Subject "CN=Test"
+$csr | Get-IssuedCertificate `
+-ConfigString "https://ces01.intra.adcslabor.de/ADCS%20Labor%20Issuing%&20CA%201_CES_UsernamePassword/service.svc/CES" `
+-CertificateTemplate "ADCSLaborUser" `
+-Credential (Get-Credential)
 ```
 
 Example: Retrieving an issued Certificate for a previously submitted Certificate request
 
 ```powershell
 Get-IssuedCertificate `
--ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1"
+-ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1" `
 -RequestId 12345
 ```
 
@@ -205,7 +232,7 @@ Example: Creating a Certificate Request, submitting it to a Certification Author
 ```powershell
 $csr = New-CertificateRequest -Subject "CN=Test"
 $response = $csr | Get-IssuedCertificate `
--ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1"
+-ConfigString "ca02.intra.adcslabor.de\ADCS Labor Issuing CA 1" `
 -CertificateTemplate "ADCSLaborUser"
 $response.Certificate | Install-IssuedCertificate
 ```
@@ -230,4 +257,25 @@ Example: Unarchive an archived Certificate, identified by it's SHA-1 Thumbprint
 Undo-CertificateArchival `
 -Thumbprint 85CF977C7E32CE808E9D92C61FDB9A43437DC4A2 `
 -CertStoreLocation Cert:\CurrentUser\My\
+```
+
+### Get-RemoteDesktopCertificate
+
+`Get-RemoteDesktopCertificate` gets the currently configured Certificate for the Remote Desktop Session Host on the local System.
+
+Example: Retrieving the currently configured Remote Desktop Certificate
+
+```powershell
+Get-RemoteDesktopCertificate
+```
+
+### Set-RemoteDesktopCertificate
+
+`Set-RemoteDesktopCertificate` sets the Certificate for the Remote Desktop Session Host on the local System. Can be combined with `Get-NDESCertificate` or `Install-IssuedCertificate`.
+
+Example: Choosing and setting a Remote Desktop Certificate
+
+```powershell
+Get-ChildItem -Path Cert:\LocalMachine\My\85CF977C7E32CE808E9D92C61FDB9A43437DC4A2 | 
+Set-RemoteDesktopCertificate
 ```

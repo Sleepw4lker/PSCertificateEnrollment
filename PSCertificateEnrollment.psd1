@@ -12,7 +12,7 @@
 RootModule = 'PSCertificateEnrollment.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.3'
+ModuleVersion = '1.0.4'
 
 # Supported PSEditions. Disabled to ensure compatibility with vanilla Windows 8.1 and 2012 R2.
 # https://docs.microsoft.com/en-us/powershell/scripting/gallery/concepts/module-psedition-support
@@ -78,7 +78,9 @@ FunctionsToExport = @(
     'New-CertificateRequest',
     'New-SignedCertificateRequest',
     'Install-IssuedCertificate',
-    'Undo-CertificateArchival'
+    'Undo-CertificateArchival',
+    'Get-RemoteDesktopCertificate',
+    'Set-RemoteDesktopCertificate'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

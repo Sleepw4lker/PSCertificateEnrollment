@@ -330,6 +330,7 @@ New-Variable -Option Constant -Name EkuNameToOidTable -Value @{
     EnrollmentAgent = $Oid.XCN_OID_ENROLLMENT_AGENT
     ClientAuthentication = $Oid.XCN_OID_PKIX_KP_CLIENT_AUTH
     CodeSigning = $Oid.XCN_OID_PKIX_KP_CODE_SIGNING
+    LifeTimeSigning = $Oid.XCN_OID_KP_LIFETIME_SIGNING
     DocumentSigning = $Oid.XCN_OID_KP_DOCUMENT_SIGNING
     DocumentEncryption = $Oid.XCN_OID_KP_DOCUMENT_ENCRYPTION
     EncryptingFileSystem = $Oid.XCN_OID_KP_EFS
@@ -380,6 +381,8 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\New-SignedCertificateRequest.ps1
 . $ModuleRoot\Functions\Install-IssuedCertificate.ps1
 . $ModuleRoot\Functions\Undo-CertificateArchival.ps1
+. $ModuleRoot\Functions\Get-RemoteDesktopCertificate.ps1
+. $ModuleRoot\Functions\Set-RemoteDesktopCertificate.ps1
 
 # Import Private Functions
 . $ModuleRoot\Functions\Convert-DERToBASE64.ps1
