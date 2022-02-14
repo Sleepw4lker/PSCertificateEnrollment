@@ -163,7 +163,7 @@ Function Get-NDESCertificate {
         [Parameter(Mandatory=$False)]
         [ValidateSet(512,1024,2048,3072,4096,8192)]
         [Int]
-        $KeyLength = 2048,
+        $KeyLength = 3072,
 
         [Alias("Exportable")]
         [Parameter(Mandatory=$False)]
@@ -303,7 +303,7 @@ Function Get-NDESCertificate {
 
             # New Certificate Request
 
-            If ((-not $Dns) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and ((-not $Subject) -or ($Subject -eq "CN="))) {
+            If ((-not $Dns) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and (-not $Subject)) {
                 Write-Error -Message "You must provide an Identity, either in Form ob a Subject or Subject Alternative Name!"
                 return
             }

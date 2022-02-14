@@ -1,11 +1,15 @@
-﻿# https://docs.microsoft.com/en-us/windows/release-information/
+﻿If ($PSVersionTable.PSEdition -ne "Desktop") {
+    Write-Error -Message "This module is only compatible with the Desktop Edition of Windows PowerShell"
+    return
+}
+
+# https://docs.microsoft.com/en-us/windows/release-information/
 New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_7 -Value 7601
 New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_8_1 -Value 9600
 New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_10 -Value 10240
 
 # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-objectidgroupid
 New-Variable -Option Constant -Name ObjectIdGroupId -Value @{
-    XCN_CRYPT_OID_DISABLE_SEARCH_DS_FLAG = [Int]::MinValue
     XCN_CRYPT_ANY_GROUP_ID = 0
     XCN_CRYPT_HASH_ALG_OID_GROUP_ID = 1
     XCN_CRYPT_FIRST_ALG_OID_GROUP_ID = 1
@@ -23,15 +27,16 @@ New-Variable -Option Constant -Name ObjectIdGroupId -Value @{
     XCN_CRYPT_OID_INFO_OID_GROUP_BIT_LEN_SHIFT = 16
     XCN_CRYPT_GROUP_ID_MASK = 65535
     XCN_CRYPT_OID_INFO_OID_GROUP_BIT_LEN_MASK = 268369920
+    XCN_CRYPT_OID_DISABLE_SEARCH_DS_FLAG = 0x80000000
     XCN_CRYPT_KEY_LENGTH_MASK = 268369920
     XCN_CRYPT_OID_PREFER_CNG_ALGID_FLAG = 1073741824
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-objectidpublickeyflags
-New-Variable -Option Constant -Name ObjectIdPublicKeyFlags  -Value @{
+#  https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-objectidpublickeyflags
+New-Variable -Option Constant -Name ObjectIdPublicKeyFlags -Value @{
     XCN_CRYPT_OID_INFO_PUBKEY_ANY = 0
-    XCN_CRYPT_OID_INFO_PUBKEY_SIGN_KEY_FLAG = 1
-    XCN_CRYPT_OID_INFO_PUBKEY_ENCRYPT_KEY_FLAG = 1073741824
+    XCN_CRYPT_OID_INFO_PUBKEY_SIGN_KEY_FLAG = 0x80000000
+    XCN_CRYPT_OID_INFO_PUBKEY_ENCRYPT_KEY_FLAG = 0x40000000 
 }
 
 # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest2-getcaproperty
@@ -63,15 +68,18 @@ New-Variable -Option Constant -Name X500NameFlags -Value @{
     XCN_CERT_NAME_STR_DISABLE_UTF8_DIR_STR_FLAG = 0x100000
 }
 
+# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-objectidgroupid
 New-Variable -Option Constant -Name Oid -Value @{
 
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa379367(v=vs.85).aspx
     XCN_OID_CRL_DIST_POINTS = '2.5.29.31'
     XCN_OID_AUTHORITY_INFO_ACCESS = '1.3.6.1.5.5.7.1.1'
-
     XCN_OID_ENHANCED_KEY_USAGE = "2.5.29.37"
     XCN_OID_SUBJECT_ALT_NAME2 =  "2.5.29.17"
-
+    XCN_OID_FRESHEST_CRL = "2.5.29.46"
+    XCN_OID_CERTSRV_CA_VERSION = "1.3.6.1.4.1.311.21.1"
+    XCN_OID_CRL_NEXT_PUBLISH = "1.3.6.1.4.1.311.21.4"
+    
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa378132(v=vs.85).aspx
     XCN_OID_ANY_APPLICATION_POLICY = "1.3.6.1.4.1.311.10.12.1"
     XCN_OID_AUTO_ENROLL_CTL_USAGE = "1.3.6.1.4.1.311.20.1"
@@ -162,6 +170,7 @@ New-Variable -Option Constant -Name FullResponseProperty -Value @{
 
 # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-submit
 # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-getcertificate
+# https://github.com/tpn/winsdk-10/blob/master/Include/10.0.10240.0/um/CertCli.h
 New-Variable -Option Constant -Name RequestFlags -Value @{
     CR_IN_BASE64HEADER = 0
     CR_IN_BASE64 = 1
@@ -223,6 +232,13 @@ New-Variable -Option Constant -Name EncodingType -Value @{
     XCN_CRYPT_STRING_NOCRLF = 1073741824
 }
 
+# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-x509keyspec
+New-Variable -Option Constant -Name X509KeySpec -Value @{
+    XCN_AT_NONE = 0
+    XCN_AT_KEYEXCHANGE = 1
+    XCN_AT_SIGNATURE = 2
+}
+
 # https://docs.microsoft.com/en-us/windows/win32/api/certpol/ne-certpol-x509scepdisposition
 New-Variable -Option Constant -Name X509SCEPDisposition -Value @{
     SCEPDispositionUnknown = -1
@@ -282,6 +298,32 @@ New-Variable -Option Constant -Name X509RequestInheritOptions -Value @{
     InheritSubjectFlag = 0x00000080
     InheritExtensionsFlag = 0x00000100
     InheritSubjectAltNameFlag = 0x00000200     
+}
+
+# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-enrollmentenrollstatus
+New-Variable -Option Constant -Name EnrollmentEnrollStatus -Value @{
+    Enrolled = 0x00000001
+    EnrollPended = 0x00000002
+    EnrollUIDeferredEnrollmentRequired = 0x00000004
+    EnrollError = 0x00000010
+    EnrollUnknown = 0x00000020
+    EnrollSkipped = 0x00000040
+    EnrollDenied = 0x00000100 
+}
+
+# https://docs.microsoft.com/bs-latn-ba/windows/win32/api/certenroll/ne-certenroll-innerrequestlevel
+New-Variable -Option Constant -Name InnerRequestLevel -Value @{
+    LevelInnermost = 0
+    LevelNext = 1
+}
+
+# https://docs.microsoft.com/en-us/windows/win32/api/taskschd/ne-taskschd-task_run_flags
+New-Variable -Option Constant -Name TaskRunFlags -Value @{
+    TASK_RUN_NO_FLAGS = 0
+    TASK_RUN_AS_SELF = 1
+    TASK_RUN_IGNORE_CONSTRAINTS = 2
+    TASK_RUN_USE_SESSION_ID = 3
+    TASK_RUN_USER_SID = 4
 }
 
 # https://tools.ietf.org/html/draft-nourse-scep-23#section-3.1.1.4
@@ -383,6 +425,7 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Undo-CertificateArchival.ps1
 . $ModuleRoot\Functions\Get-RemoteDesktopCertificate.ps1
 . $ModuleRoot\Functions\Set-RemoteDesktopCertificate.ps1
+. $ModuleRoot\Functions\Invoke-AutoEnrollmentTask.ps1
 
 # Import Private Functions
 . $ModuleRoot\Functions\Convert-DERToBASE64.ps1

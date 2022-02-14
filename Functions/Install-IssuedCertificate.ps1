@@ -10,8 +10,11 @@
     Path to a Certificate file on the disk.
 
     .PARAMETER MachineContext
-    Specify this if the Certificate Request was created in the Machine Context as 
-    opposed to the User Context.
+    Specify this if the Certificate Request was created in the Machine Context as opposed to the User Context.
+
+    .PARAMETER Force
+    Normally, installing untrusted Certificates would not be allowed. The -Force Argument allows installing 
+    Certificates for which the Chain cannot be built or which do not chain to a trusted Root Certification Authority Certificate.
 
     .OUTPUTS
     The issued Certificate as an X509Certificate2 Data Type.
@@ -39,18 +42,17 @@ Function Install-IssuedCertificate {
         [String]
         $Path,
 
+        [Alias("Machine")]
         [Parameter(Mandatory=$False)]
         [Switch]
-        $MachineContext = $False
+        $MachineContext = $False,
+
+        [Parameter(Mandatory=$False)]
+        [Switch]
+        $Force = $False
     )
 
-    begin {
-        $EnrollmentObject = New-Object -ComObject X509Enrollment.CX509Enrollment
-
-        $EnrollmentObject.Initialize(
-            [int]($MachineContext.IsPresent) + 1
-        )
-    }
+    begin {}
 
     process {
 
@@ -65,22 +67,36 @@ Function Install-IssuedCertificate {
             }
         }
 
-        Try {
-            If ($Path) {
+        $EnrollmentObject = New-Object -ComObject X509Enrollment.CX509Enrollment
+
+        $EnrollmentObject.Initialize(
+            [int]($MachineContext.IsPresent) + 1
+        )
+
+        If ($Path) {
+
+            Try { 
                 $Certificate = New-Object Security.Cryptography.X509Certificates.X509Certificate2
-                $SigningCertificate.Import($Path)
+                $Certificate.Import((Get-ChildItem -Path $Path).FullName) # This is to ensure the Path is always fully qualified
             }
-        }
-        Catch {
-            Write-Error -Message $PSItem.Exception.Message
-            return  
+            Catch {
+                Write-Error -Message $PSItem.Exception.Message
+                return  
+            }
         }
 
         # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509enrollment-installresponse
         Try {
 
+            If ($Force.IsPresent) {
+                $Flags = $InstallResponseRestrictionFlags.AllowUntrustedRoot
+            }
+            Else {
+                $Flags = $InstallResponseRestrictionFlags.AllowNone
+            }
+
             $EnrollmentObject.InstallResponse(
-                $InstallResponseRestrictionFlags.AllowUntrustedCertificate,
+                $Flags,
                 [Convert]::ToBase64String($Certificate.RawData),
                 $EncodingType.XCN_CRYPT_STRING_BASE64,
                 [String]::Empty
@@ -90,13 +106,14 @@ Function Install-IssuedCertificate {
             Write-Error -Message $PSItem.Exception.Message
             return  
         }
+        Finally {
+            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($EnrollmentObject))
+        }
 
         # Return the Certificate if successful
         $Certificate
 
     }
 
-    end {
-        [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($EnrollmentObject))
-    }
+    end {}
 }

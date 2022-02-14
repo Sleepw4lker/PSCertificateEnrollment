@@ -12,11 +12,11 @@
 RootModule = 'PSCertificateEnrollment.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.4'
+ModuleVersion = '1.0.6'
 
-# Supported PSEditions. Disabled to ensure compatibility with vanilla Windows 8.1 and 2012 R2.
+# Supported PSEditions.
 # https://docs.microsoft.com/en-us/powershell/scripting/gallery/concepts/module-psedition-support
-# CompatiblePSEditions = @('Desktop')
+CompatiblePSEditions = @('Desktop')
 
 # ID used to uniquely identify this module
 GUID = '74768cbe-add9-4b55-b060-a9461a16e98d'
@@ -34,7 +34,7 @@ Copyright = '(c) 2020 Uwe Gradenegger. All rights reserved.'
 Description = 'Extends the Built-In PKIClient Module. Building Certificate Signing Requests, Certificate Enrollment via the Microsoft Network Device Enrollment Service (NDES) via the Simple Certificate Enrollment Protocol (SCEP).'
 
 # Minimum version of the Windows PowerShell engine required by this module
-PowerShellVersion = '4.0'
+PowerShellVersion = '5.1'
 
 # Name of the Windows PowerShell host required by this module
 # PowerShellHostName = ''
@@ -43,7 +43,7 @@ PowerShellVersion = '4.0'
 # PowerShellHostVersion = ''
 
 # Minimum version of Microsoft .NET Framework required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
-# DotNetFrameworkVersion = ''
+# DotNetFrameworkVersion = 'v4.6'
 
 # Minimum version of the common language runtime (CLR) required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
 # CLRVersion = ''
@@ -80,7 +80,8 @@ FunctionsToExport = @(
     'Install-IssuedCertificate',
     'Undo-CertificateArchival',
     'Get-RemoteDesktopCertificate',
-    'Set-RemoteDesktopCertificate'
+    'Set-RemoteDesktopCertificate',
+    'Invoke-AutoEnrollmentTask'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

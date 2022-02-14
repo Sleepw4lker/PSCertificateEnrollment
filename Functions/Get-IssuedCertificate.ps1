@@ -10,7 +10,7 @@
     The Request Identifier that was given to a previously submitted Certificate Request.
 
     .PARAMETER ConfigString
-    The Comnfiguration String for the Certificate Authority to connect to, either
+    The Configuration String for the Certificate Authority to connect to, either
     in the Form of "<Hostname>\<Common-Name-of-CA>" for a RPC/DCOM Enrollment or
     in for Form of "https://<Hostname>/<Common-Name-of-CA>_CES_<Authentication-Type>/service.svc/CES"
     for a WSTEP (Certificate Enrollment Web Service) Enrollment.
@@ -78,6 +78,7 @@ Function Get-IssuedCertificate {
 
     process {
 
+        # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nn-certcli-icertrequest
         $CertRequest = New-Object -ComObject CertificateAuthority.Request
 
         # Configuring the Certificate Request Interface when using the WSTEP Protocol
@@ -149,11 +150,16 @@ Function Get-IssuedCertificate {
         # Submit a Certificate Request
         If ($CertificateRequest) {
 
+            # Additional attributes can be specified here
+
+            # https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/certutil
+            # Names and values must be colon separated, while multiple name, value pairs must be newline separated.
+            # For example: CertificateTemplate:User\nEMail:User@Domain.com where the \n sequence is converted to a newline separator.
+
+            $Attributes = [System.Collections.ArrayList]@()
+
             If ($CertificateTemplate) {
-                $Attributes = "CertificateTemplate:$($CertificateTemplate)"
-            }
-            Else {
-                $Attributes = [String]::Empty
+                $Attributes.Add("CertificateTemplate:$($CertificateTemplate)") # Names and values must be colon separated
             }
 
             Try {
@@ -161,7 +167,7 @@ Function Get-IssuedCertificate {
                 $Status = $CertRequest.Submit(
                     $RequestFlags.CR_IN_ENCODEANY,
                     $CertificateRequest,
-                    $Attributes,
+                    $($Attributes -join "`n"), # multiple name, value pairs must be newline separated.
                     $ConfigString
                 )
             }
@@ -187,6 +193,7 @@ Function Get-IssuedCertificate {
             }
         }
 
+        # Properly formatting Return Code and translate into a meaningful message
         $StatusCode = "0x" + ('{0:x}' -f $CertRequest.GetLastStatus())
         $StatusMessage = (New-Object System.ComponentModel.Win32Exception($CertRequest.GetLastStatus())).Message
 

@@ -275,7 +275,7 @@ Function New-CertificateRequest {
         [Parameter(Mandatory=$False)]
         [ValidateSet(512,1024,2048,3072,4096,8192)]
         [Int]
-        $KeyLength = 2048,
+        $KeyLength = 3072,
 
         [Alias("Exportable")]
         [Parameter(Mandatory=$False)]
@@ -353,7 +353,7 @@ Function New-CertificateRequest {
             }
         }
 
-        If ((-not $Dns) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and ((-not $Subject) -or ($Subject -eq "CN="))) {
+        If ((-not $Dns) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and (-not $Subject)) {
             Write-Error -Message "You must provide an Identity, either in Form ob a Subject or Subject Alternative Name!"
             return
         }
@@ -364,17 +364,42 @@ Function New-CertificateRequest {
         $PrivateKey = New-Object -ComObject 'X509Enrollment.CX509PrivateKey'
         
         $PrivateKey.ProviderName = $Ksp
-        $PrivateKey.KeySpec = [int]($CA.IsPresent) + 1
+
         $PrivateKey.MachineContext = [int]($MachineContext.IsPresent)
         $PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
+        
+        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-x509keyspec
+        If ($False -eq (Get-KeyStorageProvider | Where-Object { $_.Name -eq $Ksp }).LegacyCsp) {
 
-        # RSA or ECC?
-        If ($KeyAlgorithm -eq "RSA") {
+            # The intended use is not identified. This value is set if the provider that supports the key is a 
+            # Cryptography API: Next Generation (CNG) key storage provider (KSP).
+            $PrivateKey.KeySpec = $X509KeySpec.XCN_AT_NONE
 
-            # Key Length is only relevant when Key Type is "RSA"
-            $PrivateKey.Length = $KeyLength
         }
         Else {
+
+            # A Legacy CSP is being used
+
+            # The key can be used for signing.
+            $PrivateKey.KeySpec = $X509KeySpec.XCN_AT_SIGNATURE
+
+            If (-not $CA.IsPresent) {
+
+                $KeyUsage | ForEach-Object -Process {
+
+                    If ($_ -in ("KeyEncipherment","KeyAgreement","DataEncipherment","EncipherOnly")) {
+
+                        # The key can be used to encrypt (including key exchange) or sign depending on the algorithm. 
+                        # For RSA algorithms, if this value is set, the key can be used for both signing and encryption. 
+                        # For other algorithms, signing may not be supported. Further, only encryption for key exchange may be supported.
+                        $PrivateKey.KeySpec = $X509KeySpec.XCN_AT_KEYEXCHANGE
+                    }
+                }
+            }
+        }
+
+        If ($KeyAlgorithm -ne "RSA") {
+
             $Algorithm = New-Object -ComObject 'X509Enrollment.CObjectId'
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-iobjectid-initializefromalgorithmname
@@ -391,6 +416,12 @@ Function New-CertificateRequest {
             [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($Algorithm))
         }
 
+        # Key Length is only relevant when Key Type is "RSA"
+        If ($KeyAlgorithm -eq "RSA") {
+
+            $PrivateKey.Length = $KeyLength
+        }
+
         Try {
             $PrivateKey.Create()
         }
@@ -404,14 +435,14 @@ Function New-CertificateRequest {
         # https://docs.microsoft.com/en-us/windows/desktop/seccertenroll/certificate-request-functions
         If (($SelfSign.IsPresent) -or ($SigningCert)) {
             # Enables you to create a certificate directly without applying to a certification authority (CA).
-            $CertificateRequestObject = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestCertificate'
+            $CertificateRequestPkcs10 = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestCertificate'
         }
         Else {
             # Represents a PKCS #10 certificate request. A PKCS #10 request can be sent directly to a CA, or it can be wrapped by a PKCS #7 or CMC request.
-            $CertificateRequestObject = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestPkcs10'
+            $CertificateRequestPkcs10 = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestPkcs10'
         }
 
-        $CertificateRequestObject.InitializeFromPrivateKey(
+        $CertificateRequestPkcs10.InitializeFromPrivateKey(
             [int]($MachineContext.IsPresent)+1,
             $PrivateKey, 
             [String]::Empty
@@ -436,10 +467,10 @@ Function New-CertificateRequest {
                 $Subject,
                 $SubjectEncodingFlag
             )
-            $CertificateRequestObject.Subject = $SubjectDnObject
+            $CertificateRequestPkcs10.Subject = $SubjectDnObject
         }
         Catch {
-            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($CertificateRequestObject))
+            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($CertificateRequestPkcs10))
             [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($SubjectDnObject))
             [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($PrivateKey))
             Write-Error -Message "Invalid Subject Distinguished Name supplied!"
@@ -451,7 +482,7 @@ Function New-CertificateRequest {
                 https://tools.ietf.org/html/rfc5280#section-6.1
                 A certificate is self-issued if the same DN appears in the subject and issuer fields 
             #>
-            $CertificateRequestObject.Issuer = $SubjectDnObject
+            $CertificateRequestPkcs10.Issuer = $SubjectDnObject
         }
 
         If ($SigningCert) {
@@ -464,7 +495,7 @@ Function New-CertificateRequest {
                 $EncodingType.XCN_CRYPT_STRING_BASE64,
                 [Convert]::ToBase64String($SigningCert.RawData)
             )
-            $CertificateRequestObject.SignerCertificate = $SignerCertificate
+            $CertificateRequestPkcs10.SignerCertificate = $SignerCertificate
 
             # If we have a Signing Certificate, we copy its Subject to the Target Certificates Issuer
             $IssuerDnObject = New-Object -ComObject 'X509Enrollment.CX500DistinguishedName'
@@ -482,7 +513,7 @@ Function New-CertificateRequest {
                 $SigningCert.Subject,
                 $SubjectEncodingFlag
             )
-            $CertificateRequestObject.Issuer = $IssuerDnObject
+            $CertificateRequestPkcs10.Issuer = $IssuerDnObject
 
         }
 
@@ -506,14 +537,14 @@ Function New-CertificateRequest {
             }
 
             # Backup $ClockSkew in Minutes (Default: 10) to avoid timing issues
-            $CertificateRequestObject.NotBefore = $Now.AddMinutes($ClockSkew * -1)
-            $CertificateRequestObject.NotAfter = $NotAfter.AddMinutes($ClockSkew) 
+            $CertificateRequestPkcs10.NotBefore = $Now.AddMinutes($ClockSkew * -1)
+            $CertificateRequestPkcs10.NotAfter = $NotAfter.AddMinutes($ClockSkew) 
 
             # Set Serial Number of the Certificate if specified as Argument, otherwise use a random SN
             If ($SerialNumber) {
 
                 # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509certificaterequestpkcs10-initializedecode
-                $CertificateRequestObject.SerialNumber.InvokeSet(
+                $CertificateRequestPkcs10.SerialNumber.InvokeSet(
                     $(Convert-StringToCertificateSerialNumber -SerialNumber $SerialNumber), 
                     $EncodingType.XCN_CRYPT_STRING_BASE64
                 )
@@ -549,7 +580,7 @@ Function New-CertificateRequest {
         $KeyUsageExtension.Critical = $True
 
         # Add the Key Usage Extension to the Certificate
-        $CertificateRequestObject.X509Extensions.Add($KeyUsageExtension)
+        $CertificateRequestPkcs10.X509Extensions.Add($KeyUsageExtension)
 
         # If we build a CA certificate, set Basic Constraints Extension
         If ($CA.IsPresent) {
@@ -566,7 +597,7 @@ Function New-CertificateRequest {
             $BasicConstraintsExtension.Critical = $True
 
             # Adding the Extension to the Certificate
-            $CertificateRequestObject.X509Extensions.Add($BasicConstraintsExtension)
+            $CertificateRequestPkcs10.X509Extensions.Add($BasicConstraintsExtension)
         }
 
         # Set the Enhanced Key Usages Extension if specified as Argument
@@ -587,7 +618,7 @@ Function New-CertificateRequest {
             $EnhancedKeyUsageExtension.InitializeEncode($EnhancedKeyUsageOids)
 
             # Adding the Extension to the Certificate
-            $CertificateRequestObject.X509Extensions.Add($EnhancedKeyUsageExtension)
+            $CertificateRequestPkcs10.X509Extensions.Add($EnhancedKeyUsageExtension)
 
         }
 
@@ -653,7 +684,7 @@ Function New-CertificateRequest {
             $SubjectAlternativeNamesExtension.InitializeEncode($Sans)
 
             # Adding the Extension to the Certificate
-            $CertificateRequestObject.X509Extensions.Add($SubjectAlternativeNamesExtension)
+            $CertificateRequestPkcs10.X509Extensions.Add($SubjectAlternativeNamesExtension)
 
         }
 
@@ -686,7 +717,7 @@ Function New-CertificateRequest {
             $SmimeExtension.InitializeEncode($SmimeCapabilitiesObject)
 
             # Adding the Extension to the Certificate
-            $CertificateRequestObject.X509Extensions.Add($SmimeExtension)
+            $CertificateRequestPkcs10.X509Extensions.Add($SmimeExtension)
         }
     
         # Set the Authority Key Identifier Extension if specified as Argument
@@ -702,7 +733,7 @@ Function New-CertificateRequest {
             )
 
             # Adding the Extension to the Certificate
-            $CertificateRequestObject.X509Extensions.Add($AkiExtension)
+            $CertificateRequestPkcs10.X509Extensions.Add($AkiExtension)
 
         }
 
@@ -723,7 +754,7 @@ Function New-CertificateRequest {
             )
 
             # Adding the Extension to the Certificate
-            $CertificateRequestObject.X509Extensions.Add($CdpExtension)
+            $CertificateRequestPkcs10.X509Extensions.Add($CdpExtension)
 
         }
 
@@ -745,7 +776,7 @@ Function New-CertificateRequest {
             )
 
             # Adding the Extension to the Certificate
-            $CertificateRequestObject.X509Extensions.Add($AiaExtension)
+            $CertificateRequestPkcs10.X509Extensions.Add($AiaExtension)
 
         }
 
@@ -758,11 +789,11 @@ Function New-CertificateRequest {
             $AlgorithmFlags.AlgorithmFlagNone,
             $SignatureHashAlgorithm
         )
-        $CertificateRequestObject.HashAlgorithm = $HashAlgorithmObject
+        $CertificateRequestPkcs10.HashAlgorithm = $HashAlgorithmObject
 
         # Encoding the Certificate Signing Request
         Try {
-            $CertificateRequestObject.Encode()
+            $CertificateRequestPkcs10.Encode()
         }
         Catch {
             Write-Error -Message $PSItem.Exception.Message
@@ -772,7 +803,7 @@ Function New-CertificateRequest {
         # Building the Certificate Request
         # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509enrollment
         $EnrollmentObject = New-Object -ComObject 'X509Enrollment.CX509Enrollment'
-        $EnrollmentObject.InitializeFromRequest($CertificateRequestObject)
+        $EnrollmentObject.InitializeFromRequest($CertificateRequestPkcs10)
         $CertificateRequest = $EnrollmentObject.CreateRequest($EncodingType.XCN_CRYPT_STRING_BASE64REQUESTHEADER)
 
         # Either presenting the CSR, or signing ist as a Certificate
@@ -805,7 +836,7 @@ Function New-CertificateRequest {
         }
 
         # Cleaning up the COM Objects, avoiding any User Errors to be reported
-        $CertificateRequestObject,
+        $CertificateRequestPkcs10,
         $SubjectDnObject,
         $PrivateKey,
         $SignerCertificate,
