@@ -47,8 +47,8 @@ Function Get-IssuedCertificate {
             ParameterSetName="Retrieve",
             Mandatory=$True
             )]
-        [ValidateRange(1,4294967295)] # According to ADCS Database Schema, maximum should be 32 Bit
-        [System.Uint32]
+        [ValidateRange(1, [Int]::MaxValue)]
+        [Int]
         $RequestId,
 
         [Parameter(Mandatory=$True)]
