@@ -211,6 +211,13 @@ Function New-CertificateRequest {
         [String[]]
         $Smime,
 
+        [Alias("SecurityIdentifier")]
+        [Parameter(Mandatory=$False)]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^S-1-5-21-[0-9]*-[0-9]*-[0-9]*-[0-9]*$")]
+        [String]
+        $Sid,
+
         [Alias("AuthorityKeyIdentifier")]
         [Parameter(Mandatory=$False)]
         [ValidatePattern("^[0-9a-fA-F]{40}$")]
@@ -735,6 +742,23 @@ Function New-CertificateRequest {
             # Adding the Extension to the Certificate
             $CertificateRequestPkcs10.X509Extensions.Add($AkiExtension)
 
+        }
+
+        # Set the szOID_NTDS_CA_SECURITY_EXT if specified as argument
+        If ($Sid) {
+            $SidExtension = New-Object -ComObject X509Enrollment.CX509Extension
+            $SidExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
+            $SidExtensionOid.InitializeFromValue($Oid.szOID_NTDS_CA_SECURITY_EXT)
+            $SidExtension.Critical = $False
+            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa378511(v=vs.85).aspx
+            $SidExtension.Initialize(
+                $SidExtensionOid, 
+                $EncodingType.XCN_CRYPT_STRING_BASE64, 
+                $(New-SidExtension -Sid $Sid)
+            )
+
+            # Adding the Extension to the Certificate
+            $CertificateRequestPkcs10.X509Extensions.Add($SidExtension)
         }
 
         # Set the CRL Distribution Points Extension if specified as Argument

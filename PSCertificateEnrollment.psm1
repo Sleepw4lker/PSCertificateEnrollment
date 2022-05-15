@@ -140,6 +140,9 @@ New-Variable -Option Constant -Name Oid -Value @{
     sha256NoSign = "2.16.840.1.101.3.4.2.1"
     sha384NoSign = "2.16.840.1.101.3.4.2.2"
     sha512NoSign = "2.16.840.1.101.3.4.2.3"
+
+    # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-winprotlp/e168a474-7de2-421c-b460-91adf87692a3
+    szOID_NTDS_CA_SECURITY_EXT = "1.3.6.1.4.1.311.25.2"
 }
 
 # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest2-getfullresponseproperty
@@ -436,3 +439,4 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Get-CertificateHash.ps1
 . $ModuleRoot\Functions\New-AiaExtension.ps1
 . $ModuleRoot\Functions\New-CdpExtension.ps1
+. $ModuleRoot\Functions\New-SidExtension.ps1
