@@ -42,7 +42,11 @@ Function Get-NDESOTP {
 
         [Parameter(Mandatory=$False)]
         [PSCredential]
-        $Credential
+        $Credential,
+
+        [Parameter(Mandatory=$False)]
+        [Switch]
+        $BasicAuthentication
     )
 
     begin {
@@ -64,7 +68,24 @@ Function Get-NDESOTP {
         }
 
         If ($Credential) {
-            $Arguments.Add("Credential", $Credential)
+            
+            If ($BasicAuthentication.IsPresent) {
+
+                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+                $UnsecurePassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+
+                $EncodedCredentials = [System.Convert]::ToBase64String(
+                    [System.Text.Encoding]::ASCII.GetBytes(
+                        "$($Credential.UserName):$UnsecurePassword"
+                        )
+                    )
+
+                $Headers = @{ Authorization = "Basic $EncodedCredentials" }
+                $Arguments.Add("Headers", $Headers)
+            }
+            Else {
+                $Arguments.Add("Credential", $Credential)
+            }
         }
         Else {
             # Use Windows integrated Authentication
@@ -94,7 +115,7 @@ Function Get-NDESOTP {
                                 Select-Object -First 1)
 
                     If ($null -eq $Otp) {
-                        Write-Error -Message "No OTP found in HTTP Response. Check your Permissions and the -PasswordLength Parameter."
+                        Write-Error -Message "No OTP found in HTTP Response. Check your Permissions and the -PasswordLength Parameter. Also mind that the password cache may be full."
                     }
                     Else {
                         return $Otp
