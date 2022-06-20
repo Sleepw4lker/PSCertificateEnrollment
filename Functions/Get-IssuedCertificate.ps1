@@ -71,7 +71,14 @@ Function Get-IssuedCertificate {
         [Parameter(Mandatory=$False)]
         [ValidatePattern("^[0-9a-fA-F]{40}$")]
         [String]
-        $ClientCertificate
+        $ClientCertificate,
+
+        [Parameter(
+            ParameterSetName="Submit",
+            Mandatory=$False
+            )]
+        [String[]]
+        $RequestAttributes
     )
     
     begin {}
@@ -156,10 +163,8 @@ Function Get-IssuedCertificate {
             # Names and values must be colon separated, while multiple name, value pairs must be newline separated.
             # For example: CertificateTemplate:User\nEMail:User@Domain.com where the \n sequence is converted to a newline separator.
 
-            $Attributes = [System.Collections.ArrayList]@()
-
             If ($CertificateTemplate) {
-                $Attributes.Add("CertificateTemplate:$($CertificateTemplate)") # Names and values must be colon separated
+                $RequestAttributes += "CertificateTemplate:$($CertificateTemplate)" # Names and values must be colon separated
             }
 
             Try {
@@ -167,7 +172,7 @@ Function Get-IssuedCertificate {
                 $Status = $CertRequest.Submit(
                     $RequestFlags.CR_IN_ENCODEANY,
                     $CertificateRequest,
-                    $($Attributes -join "`n"), # multiple name, value pairs must be newline separated.
+                    $($RequestAttributes -join [Environment]::NewLine), # multiple name, value pairs must be newline separated.
                     $ConfigString
                 )
             }
