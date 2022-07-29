@@ -47,9 +47,14 @@
     You can specify any CSP or KSP that is installed on the System.
     Defaults to the Microsoft Software Key Storage Provider.
 
+    .PARAMETER KeyAlgorithm
+    Specifies the Algorithm to be used when creating the Key Pair.
+    Defaults to "RSA".
+
     .PARAMETER KeyLength
     Specifies the Key Length for the Key pair of the Certificate.
-    Defaults to 2048 Bits RSA. ECC is not implemented as of now.
+    Gets applied only when KeyAlgorithm is "RSA".
+    Defaults to 3072 Bits.
 
     .PARAMETER PrivateKeyExportable
     Specifies if the Private Key of the Certificate shall be marked as exportable.
@@ -161,6 +166,20 @@ Function Get-NDESCertificate {
         $Ksp = "Microsoft Software Key Storage Provider",
 
         [Parameter(Mandatory=$False)]
+        [ValidateSet(
+            "RSA",
+            "ECDSA_P256",
+            "ECDSA_P384",
+            "ECDSA_P521",
+            "ECDH_P256",
+            "ECDH_P384",
+            "ECDH_P521"
+            )]
+        [String]
+        $KeyAlgorithm = "RSA",
+
+        [Alias("KeySize")]
+        [Parameter(Mandatory=$False)]
         [ValidateSet(512,1024,2048,3072,4096,8192)]
         [Int]
         $KeyLength = 3072,
@@ -262,7 +281,7 @@ Function Get-NDESCertificate {
             }
         }
 
-        $CertificateRequestObject = New-Object -ComObject "X509Enrollment.CX509CertificateRequestPkcs10"
+        $CertificateRequestPkcs10 = New-Object -ComObject "X509Enrollment.CX509CertificateRequestPkcs10"
 
         # Determining if we create an entirely new Certificate Request or inherit Settings from an old one
         If ($SigningCert) {
@@ -276,12 +295,18 @@ Function Get-NDESCertificate {
                 $InheritOptions += $X509RequestInheritOptions.InheritExtensionsFlag
                 $InheritOptions += $X509RequestInheritOptions.InheritSubjectFlag
 
-                $CertificateRequestObject.InitializeFromCertificate(
+                $CertificateRequestPkcs10.InitializeFromCertificate(
                     [int]($SigningCert.PSParentPath -match "Machine")+1,
                     [Convert]::ToBase64String($SigningCert.RawData),
                     $EncodingType.XCN_CRYPT_STRING_BASE64,
                     $InheritOptions
                 )
+
+                
+                # Configuring the private Key of the Certificate
+                $CertificateRequestPkcs10.PrivateKey.Length = $KeyLength
+                $CertificateRequestPkcs10.PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
+                $CertificateRequestPkcs10.PrivateKey.ProviderName = $Ksp
 
                 <#
                     https://tools.ietf.org/html/draft-nourse-scep-23#section-2.3
@@ -290,7 +315,7 @@ Function Get-NDESCertificate {
                     the challenge password) but MAY send the originally distributed
                     challenge password in the challengePassword attribute.
                 #>
-                $CertificateRequestObject.ChallengePassword = [String]::Empty
+                $CertificateRequestPkcs10.ChallengePassword = [String]::Empty
 
             }
             Else {
@@ -308,15 +333,61 @@ Function Get-NDESCertificate {
                 return
             }
 
-            $CertificateRequestObject.Initialize(
-                [int]($MachineContext.IsPresent)+1
+
+            # We first create the Private Key
+            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509privatekey
+            # Setting the Provider Attribute on the CertRequest Object afterwards seems not to work with Key Storage Providers...why?
+            $PrivateKey = New-Object -ComObject 'X509Enrollment.CX509PrivateKey'
+            
+            $PrivateKey.ProviderName = $Ksp
+
+            $PrivateKey.MachineContext = [int]($MachineContext.IsPresent)
+            $PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
+
+            If ($KeyAlgorithm -ne "RSA") {
+
+                $Algorithm = New-Object -ComObject 'X509Enrollment.CObjectId'
+    
+                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-iobjectid-initializefromalgorithmname
+                $Algorithm.InitializeFromAlgorithmName(
+                    $ObjectIdGroupId.XCN_CRYPT_PUBKEY_ALG_OID_GROUP_ID,
+                    $ObjectIdPublicKeyFlags.XCN_CRYPT_OID_INFO_PUBKEY_ANY,
+                    $AlgorithmFlags.AlgorithmFlagsNone,
+                    $KeyAlgorithm
+                )
+    
+                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509privatekey-put_algorithm
+                $PrivateKey.Algorithm = $Algorithm
+    
+                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($Algorithm))
+            }
+    
+            # Key Length is only relevant when Key Type is "RSA"
+            If ($KeyAlgorithm -eq "RSA") {
+    
+                $PrivateKey.Length = $KeyLength
+            }
+    
+            Try {
+                $PrivateKey.Create()
+            }
+            Catch {
+                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($PrivateKey))
+                Write-Error -Message $PSItem.Exception.Message
+                return
+            }
+
+            $CertificateRequestPkcs10.InitializeFromPrivateKey(
+                [int]($MachineContext.IsPresent)+1,
+                $PrivateKey, 
+                [String]::Empty
             )
 
             Try {
                 # To Do: implement Validation of the Subject RDN
                 $SubjectDnObject = New-Object -ComObject "X509Enrollment.CX500DistinguishedName"
                 $SubjectDnObject.Encode($Subject)
-                $CertificateRequestObject.Subject = $SubjectDnObject
+                $CertificateRequestPkcs10.Subject = $SubjectDnObject
             }
             Catch {
                 Write-Error -Message "Invalid Subject DN supplied!"
@@ -384,7 +455,7 @@ Function Get-NDESCertificate {
                 $SubjectAlternativeNamesExtension.InitializeEncode($Sans)
         
                 # Adding the Extension to the Certificate
-                $CertificateRequestObject.X509Extensions.Add($SubjectAlternativeNamesExtension)
+                $CertificateRequestPkcs10.X509Extensions.Add($SubjectAlternativeNamesExtension)
         
             }
 
@@ -396,15 +467,10 @@ Function Get-NDESCertificate {
                     the challengePassword by the SCEP client is OPTIONAL and allows for
                     unauthenticated authorization of enrollment requests.
                 #>
-                $CertificateRequestObject.ChallengePassword = $ChallengePassword
+                $CertificateRequestPkcs10.ChallengePassword = $ChallengePassword
             }
 
         }
-
-        # Configuring the private Key of the Certificate
-        $CertificateRequestObject.PrivateKey.Length = $KeyLength
-        $CertificateRequestObject.PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
-        $CertificateRequestObject.PrivateKey.ProviderName = $Ksp
 
         <#
             Identify the Root CA Certificate that was delivered with the Chain
@@ -423,7 +489,7 @@ Function Get-NDESCertificate {
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-initialize
             $SCEPEnrollmentInterface.Initialize(
-                $CertificateRequestObject,
+                $CertificateRequestPkcs10,
                 (Get-CertificateHash -Bytes $RootCaCert.RawData -HashAlgorithm "MD5"),
                 $EncodingType.XCN_CRYPT_STRING_HEX,
                 [Convert]::ToBase64String($GetCACert),
@@ -598,7 +664,7 @@ Function Get-NDESCertificate {
         }
 
         # Cleaning up the COM Objects, avoiding any User Errors to be reported
-        $CertificateRequestObject,
+        $CertificateRequestPkcs10,
         $SubjectDnObject,
         $SubjectAlternativeNamesExtension,
         $Sans,

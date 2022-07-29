@@ -1,12 +1,20 @@
 == PSCertificateEnrollment
 
-PowerShell Module for various PKI-related tasks like: * Creating Certificate Signing requests * Creating Self-Signed Certificates or Certificates signed with a given Key * Signing a Certificate Request with an Enrollment Agent Certificate prior to Submission to a Certification Authority * Submitting Certificate Requests to a Certification Authority via DCOM and WSTEP Protocols and retrieving the response * Installing issued Certificates after the Certificate Request has been approved by a Certificartion Authority * Requesting or Renewing User or Machine Certificates via the https://tools.ietf.org/html/draft-nourse-scep-23[Simple Certificate Enrollment Protocol (SCEP)] * Identifying and configuring the Remote Desktop Session Host Certificate of a machine
+PowerShell Module for various PKI-related tasks like:
+
+* Creating Certificate Signing requests
+* Creating Self-Signed Certificates or Certificates signed with a given Key
+* Signing a Certificate Request with an Enrollment Agent Certificate prior to Submission to a Certification Authority
+* Submitting Certificate Requests to a Certification Authority via DCOM and WSTEP Protocols and retrieving the response
+* Installing issued Certificates after the Certificate Request has been approved by a Certificartion Authority
+* Requesting or Renewing User or Machine Certificates via the https://tools.ietf.org/html/draft-nourse-scep-23[Simple Certificate Enrollment Protocol (SCEP)]
+* Identifying and configuring the Remote Desktop Session Host Certificate of a machine
 
 The module can be obtained via the https://www.powershellgallery.com/packages/PSCertificateEnrollment[PowerShell Gallery].
 
 It is intended for Client-Side Tasks inside the Microsoft PKI Ecosystem. For managing a Microsoft Certification Authority, take a look at the awesome https://github.com/PKISolutions/PSPKI[PSPKI Module].
 
-It is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any ``certutil'' or ``openssl'' command. No additional binary Code (e.g. a DLL etc.) necessary to deploy. The Module and it’s files are digitally signed when obtaining it from the PowerShell Gallery.
+It is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any `certutil` or `openssl` command. No additional binary Code (e.g. a DLL etc.) necessary to deploy. The Module and it's files are digitally signed when obtaining it from the PowerShell Gallery.
 
 Supported Operating Systems
 
