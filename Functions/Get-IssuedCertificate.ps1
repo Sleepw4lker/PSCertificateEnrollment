@@ -17,7 +17,7 @@
 
     .PARAMETER CertificateTemplate
     Optional: The name of the Certificate Template to request a Certificate from.
-    Must be used if the Certificate does not contain this information.
+    Must be used if the Certificate request does not contain this information.
 
     .PARAMETER Credential
     Credentials when performing a WSTEP Enrollment with Username/Password Authentication.

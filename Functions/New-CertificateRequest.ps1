@@ -70,7 +70,7 @@
     .PARAMETER KeyLength
     Specifies the Key Length for the Key pair of the Certificate.
     Gets applied only when KeyAlgorithm is "RSA".
-    Defaults to 2048 Bits.
+    Defaults to 3072 Bits.
 
     .PARAMETER PrivateKeyExportable
     Specifies if the Private Key of the Certificate shall be marked as exportable.
@@ -279,6 +279,7 @@ Function New-CertificateRequest {
         [String]
         $KeyAlgorithm = "RSA",
 
+        [Alias("KeySize")]
         [Parameter(Mandatory=$False)]
         [ValidateSet(512,1024,2048,3072,4096,8192)]
         [Int]
