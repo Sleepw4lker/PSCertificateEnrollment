@@ -16,19 +16,17 @@ Function New-SidExtension {
 
         $Output = ''
 
-        # Object Identifier 1.3.6.1.4.1.311.25.2.1
-        $Output += "060A2B060104018237190201"
-
         # OCTET_STRING
-        $Entry = Convert-StringToDER `
+        $Output = Convert-StringToDER `
             -IdentifierOctets "04" `
             -ContentOctets $(Convert-StringtoHex -String $Sid)
 
-        # Building the Nodes
-
-        $Output += Convert-StringToDER `
+        $Output = Convert-StringToDER `
             -IdentifierOctets "A0" `
-            -ContentOctets $Entry
+            -ContentOctets $Output
+
+        # Object Identifier 1.3.6.1.4.1.311.25.2.1
+        $Output = "060A2B060104018237190201" + $Output
 
         $Output = Convert-StringToDER `
             -IdentifierOctets "A0" `
