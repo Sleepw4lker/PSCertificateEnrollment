@@ -51,6 +51,7 @@ Function Get-IssuedCertificate {
         [Int]
         $RequestId,
 
+        [Alias("Config")]
         [Parameter(Mandatory=$True)]
         [ValidateNotNullOrEmpty()]
         [String]
@@ -73,6 +74,7 @@ Function Get-IssuedCertificate {
         [String]
         $ClientCertificate,
 
+        [Alias("Attrib")]
         [Parameter(
             ParameterSetName="Submit",
             Mandatory=$False
@@ -200,6 +202,7 @@ Function Get-IssuedCertificate {
 
         # Properly formatting Return Code and translate into a meaningful message
         $StatusCode = "0x" + ('{0:x}' -f $CertRequest.GetLastStatus())
+        $StatusCodeInt = $CertRequest.GetLastStatus()
         $StatusMessage = (New-Object System.ComponentModel.Win32Exception($CertRequest.GetLastStatus())).Message
 
         # Process the Submission Result and return it
@@ -212,6 +215,7 @@ Function Get-IssuedCertificate {
                     Disposition = $Status
                     Result = "Request is incomplete"
                     StatusCode = $StatusCode
+                    StatusCodeInt = $StatusCodeInt
                     StatusMessage = $StatusMessage
                     Certificate = $null
                     RawCertificate = $null
@@ -225,6 +229,7 @@ Function Get-IssuedCertificate {
                     Disposition = $Status
                     Result = "There was an error during submission"
                     StatusCode = $StatusCode
+                    StatusCodeInt = $StatusCodeInt
                     StatusMessage = $StatusMessage
                     Certificate = $null
                     RawCertificate = $null
@@ -238,6 +243,7 @@ Function Get-IssuedCertificate {
                     Disposition = $Status
                     Result = "Request was denied"
                     StatusCode = $StatusCode
+                    StatusCodeInt = $StatusCodeInt
                     StatusMessage = $StatusMessage
                     Certificate = $null
                     RawCertificate = $null
@@ -260,6 +266,7 @@ Function Get-IssuedCertificate {
                     Disposition = $Status
                     Result = "Certificate was issued"
                     StatusCode = $StatusCode
+                    StatusCodeInt = $StatusCodeInt
                     StatusMessage = $StatusMessage
                     Certificate = $CertificateObject
                     RawCertificate = $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64HEADER)
@@ -273,6 +280,7 @@ Function Get-IssuedCertificate {
                     Disposition = $Status
                     Result = "Certificate was issued out of band"
                     StatusCode = $StatusCode
+                    StatusCodeInt = $StatusCodeInt
                     StatusMessage = $StatusMessage
                     Certificate = $null
                     RawCertificate = $null
@@ -286,6 +294,7 @@ Function Get-IssuedCertificate {
                     Disposition = $Status
                     Result = "Request was taken under submission"
                     StatusCode = $StatusCode
+                    StatusCodeInt = $StatusCodeInt
                     StatusMessage = $StatusMessage
                     Certificate = $null
                     RawCertificate = $null
@@ -299,6 +308,7 @@ Function Get-IssuedCertificate {
                     Disposition = $Status
                     Result = "Certificate has been revoked"
                     StatusCode = $StatusCode
+                    StatusCodeInt = $StatusCodeInt
                     StatusMessage = $StatusMessage
                     Certificate = $null
                     RawCertificate = $null
