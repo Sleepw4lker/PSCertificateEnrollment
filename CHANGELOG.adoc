@@ -1,5 +1,15 @@
 ﻿== Changelog PSCertificateEnrollment PowerShell Module
 
+=== 1.0.7 (unreleased)
+
+==== Added
+* `Get-IssuedCertificate` supports request attributes now.
+* Add StatusCodeInt property to `Get-IssuedCertificate` containing the HResult returned from the certificate authority as integer.
+* Add alias "Config" für ConfigurationString Argument to `Get-IssuedCertificate`.
+* `New-CertificateRequest` now supports the newly introduced Security Identifier certificate extension.
+* `Get-NDESCertificate` now supports ECC keys.
+* `Get-NDESCertificate` now supports HTTP basic authentication.
+
 === 1.0.6 (14.02.2022)
 
 ==== Fixed
