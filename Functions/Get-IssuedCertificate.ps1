@@ -25,6 +25,9 @@
     .PARAMETER ClientCertificate
     Thumbprint of an authentication Certificate when performing a WSTEP Enrollment with Client Certificate Authentication.
 
+    .PARAMETER MachineContext
+    Uses the machine's identity for submitting the certificate request.
+
     .OUTPUTS
     An object representing the Enrollment/Retrieval result.
 #>
@@ -50,6 +53,11 @@ Function Get-IssuedCertificate {
         [ValidateRange(1, [Int]::MaxValue)]
         [Int]
         $RequestId,
+
+        [Alias("Machine")]
+        [Parameter(Mandatory=$False)]
+        [Switch]
+        $MachineContext = $False,
 
         [Alias("Config")]
         [Parameter(Mandatory=$True)]
@@ -86,6 +94,17 @@ Function Get-IssuedCertificate {
     begin {}
 
     process {
+
+        # Ensuring we work with Elevation when using the machine identity
+        If ($MachineContext.IsPresent) {
+
+            If (-not (
+                [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+                ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+                Write-Error -Message "This must be run with Elevation (Run as Administrator) when using the Machine Context!" 
+                return
+            }
+        }
 
         # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nn-certcli-icertrequest
         $CertRequest = New-Object -ComObject CertificateAuthority.Request
@@ -169,10 +188,16 @@ Function Get-IssuedCertificate {
                 $RequestAttributes += "CertificateTemplate:$($CertificateTemplate)" # Names and values must be colon separated
             }
 
+            $Flags = $RequestFlags.CR_IN_ENCODEANY
+            
+            If ($MachineContext.IsPresent) {
+                $Flags = $Flags -bor $RequestFlags.CR_IN_MACHINE
+            }
+
             Try {
                 # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-submit
                 $Status = $CertRequest.Submit(
-                    $RequestFlags.CR_IN_ENCODEANY,
+                    $Flags,
                     $CertificateRequest,
                     $($RequestAttributes -join [Environment]::NewLine), # multiple name, value pairs must be newline separated.
                     $ConfigString

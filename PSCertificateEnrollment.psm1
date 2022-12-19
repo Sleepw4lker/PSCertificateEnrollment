@@ -179,6 +179,7 @@ New-Variable -Option Constant -Name RequestFlags -Value @{
     CR_IN_BASE64 = 1
     CR_IN_BINARY = 2
     CR_IN_ENCODEANY = 0xff
+    CR_IN_MACHINE = 0x100000
     CR_OUT_BASE64HEADER = 0
     CR_OUT_BASE64 = 1
     CR_OUT_BINARY = 2
