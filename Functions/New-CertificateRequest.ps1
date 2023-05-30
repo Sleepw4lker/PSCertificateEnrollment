@@ -110,6 +110,9 @@
     .PARAMETER SelfSign
     Instructs the Cmdlet to Self-Sign the request, thus creating a Certificate.
 
+    .PARAMETER OcspNoRevocationCheck
+    Adds the id-pkix-ocsp-nocheck extension to the certificate request.
+
     .OUTPUTS
     System.String or System.Security.Cryptography.X509Certificates.X509Certificate.
     Either the BASE64-encoded Certificate Signing Request, or the Certificate as an Object.
@@ -167,6 +170,12 @@ Function New-CertificateRequest {
         })]
         [String[]]
         $Dns,
+
+        [Alias("UniformResourceIdentifier")]
+        [Alias("Url")]
+        [ValidateNotNullOrEmpty()]
+        [System.Uri[]]
+        $Uri,
 
         [Alias("UserPrincipalName")]
         [Parameter(Mandatory=$False)]
@@ -291,6 +300,7 @@ Function New-CertificateRequest {
         $PrivateKeyExportable = $False,
 
         [Alias("Hash")]
+        [Alias("HashAlgorithm")]
         [Parameter(Mandatory=$False)]
         [ValidateSet("SHA1","SHA256","SHA384","SHA512")]
         [String]
@@ -337,7 +347,11 @@ Function New-CertificateRequest {
 
         [Parameter(Mandatory=$False)]
         [Switch]
-        $SelfSign
+        $SelfSign,
+
+        [Parameter(Mandatory=$False)]
+        [Switch]
+        $OcspNoRevocationCheck
     )
 
     begin {}
@@ -361,7 +375,7 @@ Function New-CertificateRequest {
             }
         }
 
-        If ((-not $Dns) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and (-not $Subject)) {
+        If ((-not $Dns) -and (-not $Uri) -and (-not $Upn) -and (-not $Email) -and (-not $IP) -and (-not $Subject)) {
             Write-Error -Message "You must provide an Identity, either in Form ob a Subject or Subject Alternative Name!"
             return
         }
@@ -631,7 +645,7 @@ Function New-CertificateRequest {
         }
 
         # Set the Subject Alternative Names Extension if specified as Argument
-        If ($Upn -or $Email -or $Dns -or $IP) {
+        If ($Upn -or $Email -or $Dns -or $IP -or $Uri) {
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionalternativenames
             $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
@@ -669,6 +683,18 @@ Function New-CertificateRequest {
                 $AlternativeNameObject.InitializeFromString(
                     $AlternativeNameType.XCN_CERT_ALT_NAME_DNS_NAME,
                     $Entry
+                )
+                $Sans.Add($AlternativeNameObject)
+                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+
+            }
+
+            Foreach ($Entry in $Uri) {
+            
+                $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                $AlternativeNameObject.InitializeFromString(
+                    $AlternativeNameType.XCN_CERT_ALT_NAME_URL,
+                    $Entry.ToString()
                 )
                 $Sans.Add($AlternativeNameObject)
                 [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
@@ -803,6 +829,19 @@ Function New-CertificateRequest {
             # Adding the Extension to the Certificate
             $CertificateRequestPkcs10.X509Extensions.Add($AiaExtension)
 
+        }
+
+        If ($OcspNoRevocationCheck) {
+            $OcspNoRevocationCheckExtension = New-Object -ComObject X509Enrollment.CX509Extension
+            $OcspNoRevocationCheckExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
+            $OcspNoRevocationCheckExtensionOid.InitializeFromValue($Oid.OcspNoRevocationCheck)
+            $OcspNoRevocationCheckExtension.Critical = $False
+            $OcspNoRevocationCheckExtension.Initialize(
+                $OcspNoRevocationCheckExtensionOid, 
+                $EncodingType.XCN_CRYPT_STRING_BINARY,
+                $null
+            )
+            $CertificateRequestPkcs10.X509Extensions.Add($OcspNoRevocationCheckExtension)
         }
 
         # Specifying the Hashing Algorithm to use for the Request / the Certificate

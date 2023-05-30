@@ -143,6 +143,8 @@ New-Variable -Option Constant -Name Oid -Value @{
 
     # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-winprotlp/e168a474-7de2-421c-b460-91adf87692a3
     szOID_NTDS_CA_SECURITY_EXT = "1.3.6.1.4.1.311.25.2"
+
+    OcspNoRevocationCheck = "1.3.6.1.5.5.7.48.1.5"
 }
 
 # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest2-getfullresponseproperty

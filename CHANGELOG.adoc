@@ -1,5 +1,10 @@
 ﻿== Changelog PSCertificateEnrollment PowerShell Module
 
+=== 1.0.9 (May 30, 2023)
+
+* `Get-IssuedCertificate` supports the UniformResourceIdentifier SAN type now.
+* `Get-IssuedCertificate` supports the id-pkix-ocsp-nocheck Extension now with the OcspNoRevocationCheck parameter. 
+
 === 1.0.8 (Dec 19, 2022)
 
 * `Get-IssuedCertificate` supports requesting certificates using the machine's identity now.
