@@ -52,7 +52,7 @@ Function Get-NDESOTP {
     begin {
 
         If ($NoSSL) { 
-            Write-Warning "Not using SSL. Authentication Credentials will be sent in Cleartext"
+            Write-Warning "Not using SSL. Authentication Credentials might be sent in Cleartext, but usually using NTLM"
             $Protocol = "http" 
         }
         Else {
