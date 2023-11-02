@@ -73,6 +73,17 @@
     Specifies if the Certificate Submission shall be done with HTTP "GET" or "POST".
     Defaults to "POST".
 
+    .PARAMETER NoPolling
+    Turn of polling for a certificate request that initially returned ScepDispositionPending.
+
+    .PARAMETER MaxPolling
+    Specifies the maximum time in seconds to wait for getting a certificate request that initially returned ScepDispositionPending.
+    Defaults to 3600
+
+    .PARAMETER PollingInterval
+    Specifies the interval in seconds between polling for a certificate where the request initially returned ScepDispositionPending.
+    Defaults to 300
+
     .OUTPUTS
     System.Security.Cryptography.X509Certificates.X509Certificate. Returns the issued Certificate returned by the NDES Server.
 #>
@@ -207,7 +218,22 @@ Function Get-NDESCertificate {
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $Suffix = "certsrv/mscep/mscep.dll"
+        $Suffix = "certsrv/mscep/mscep.dll",
+
+        [Parameter(Mandatory=$False)]
+        [Switch]
+        $NoPolling = $False,
+
+        [Parameter(Mandatory=$False)]
+        [ValidateRange(1,57600)]
+        [Int]
+        $MaxPolling = 28800,
+
+        [Parameter(Mandatory=$False)]
+        [ValidateRange(60,600)]
+        [Int]
+        $PollingInterval = 300
+
     )
 
     begin  {
@@ -539,129 +565,186 @@ Function Get-NDESCertificate {
             $EncodingType.XCN_CRYPT_STRING_BASE64
             )
         
-        # Submission to the NDES Server
-        Try {
+        $TransactionId = $SCEPEnrollmentInterface.TransactionId($EncodingType.XCN_CRYPT_STRING_HEX)
+        $TransactionIdText = $TransactionId -replace '\s',''
+        Write-Information -MessageData "Transaction Id: $TransactionIdText" -Tags "TransactionId" -InformationAction Continue
 
-            If ($Method -eq "POST") {
+        $DoOperation = $True
+        $FirstPendingMessage = $True
 
-                If ($GetCACaps -match "POSTPKIOperation") {
-                    $SCEPResponse = Invoke-WebRequest `
-                        -Body ([Convert]::FromBase64String($SCEPRequestMessage)) `
-                        -Method 'POST' `
-                        -Uri "$($ConfigString)?operation=PKIOperation" `
-                        -Headers @{'Content-Type' = 'application/x-pki-message'}
-                }
-                Else {
-                    Write-Warning -Message "The Server indicates that it doesnt support the 'POST' Method. Falling back to 'GET'."
-                    $Method = "GET"
-                }
-            }
+        While ($DoOperation) {
+            $DoOperation = $False
 
-            If ($Method -eq "GET") {
-                $SCEPResponse = Invoke-WebRequest `
-                    -Method 'GET' `
-                    -Uri "$($ConfigString)?operation=PKIOperation&message=$([uri]::EscapeDataString($SCEPRequestMessage))" `
-                    -Headers @{'Content-Type' = 'application/x-pki-message'}
-            }
+            # Submission to the NDES Server
+            Try {
 
-            $SCEPResponse = [Convert]::ToBase64String($ScepResponse.Content)
+                If ($Method -eq "POST") {
 
-        }
-        Catch {
-            Write-Error -Message $PSItem.Exception.Message
-            return
-        }
-        
-        Try {
-
-            # Process a response message and return the disposition of the message.
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-processresponsemessage
-            $Disposition = $SCEPEnrollmentInterface.ProcessResponseMessage(
-                $SCEPResponse,
-                $EncodingType.XCN_CRYPT_STRING_BASE64
-                )
-
-            # https://docs.microsoft.com/en-us/windows/win32/api/certpol/ne-certpol-x509scepdisposition
-            Switch ($Disposition) {
-
-                $X509SCEPDisposition.SCEPDispositionFailure {
-
-                    $ErrorMessage = ''
-                    $ErrorMessage += "The NDES Server rejected the Certificate Request!`n"
-
-                    # The Failinfo Method is only present in Windows 10
-                    # Windows 8.1 / 2012 R2 Users therefore won't get any fancy error message, sadly
-                    If ([int32](Get-WmiObject Win32_OperatingSystem).BuildNumber -ge $BUILD_NUMBER_WINDOWS_10) {
-
-                        $FailInfo = ($SCEPFailInfo | Where-Object { $_.Code -eq $SCEPEnrollmentInterface.FailInfo() })
-
-                        $ErrorMessage += "SCEP Failure Information: $($FailInfo.Message) ($($FailInfo.Code)) $($FailInfo.Description)`n"
-                        $ErrorMessage += "Additional Information returned by the Server: $($SCEPEnrollmentInterface.Status().Text)`n"
-
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERT_E_WRONG_USAGE) {
-                            $ErrorMessage += "Possible reason(s): The Challenge Password has been used already."
-                        }
-
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.TRUST_E_CERT_SIGNATURE) {
-                            $ErrorMessage += "Possible reason(s): The NDES Server requires a Challenge Password but none was supplied."
-                        }
-
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.ERROR_NOT_FOUND) {
-                            $ErrorMessage += "Possible reason(s): The Challenge Password supplied is unknown to the NDES Server, or it has been used already."
-                        }
-
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERTSRV_E_BAD_REQUESTSUBJECT) {
-                            $ErrorMessage += "Possible reason(s): The CA denied your request because an invalid Subject was requested."
-                        }
-
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.RPC_S_SERVER_UNAVAILABLE) {
-                            $ErrorMessage += "Possible reason(s): The NDES Server was unable to contact the Certification Authority."
-                        }
-                    }
-
-                    Write-Error -Message $ErrorMessage
-
-                }
-
-                $X509SCEPDisposition.SCEPDispositionPending {
-                    Write-Warning -Message "The Enrollment was successful with Status ScepDispositionPending, which is not yet implemented!"
-                }
-
-                $X509SCEPDisposition.SCEPDispositionPendingChallenge {
-                    Write-Warning -Message  "The Enrollment was successful with Status ScepDispositionPendingChallenge, which is not yet implemented!"
-                }
-
-                $X509SCEPDisposition.SCEPDispositionUnknown {
-                    Write-Error -Message "The Enrollment failed for an unknown Reason."
-                }
-
-                $X509SCEPDisposition.SCEPDispositionSuccess {
-
-                    # We load the Certificate into an X509Certificate2 Object
-                    # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-get_certificate
-                    $CertificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-                    $CertificateObject.Import(
-                        [Convert]::FromBase64String(
-                            $SCEPEnrollmentInterface.Certificate($EncodingType.XCN_CRYPT_STRING_BASE64)
-                            )
-                        )
-
-                    # Return the resulting Certificate
-                    If ($MachineContext.IsPresent -or ($SigningCert -and ($SigningCert.PSParentPath -match "Machine"))) {
-                        Get-ChildItem -Path "Cert:\LocalMachine\My\$($CertificateObject.Thumbprint)"
+                    If ($GetCACaps -match "POSTPKIOperation") {
+                        $SCEPResponse = Invoke-WebRequest `
+                            -Body ([Convert]::FromBase64String($SCEPRequestMessage)) `
+                            -Method 'POST' `
+                            -Uri "$($ConfigString)?operation=PKIOperation" `
+                            -Headers @{'Content-Type' = 'application/x-pki-message'}
                     }
                     Else {
-                        Get-ChildItem -Path "Cert:\CurrentUser\My\$($CertificateObject.Thumbprint)"
+                        Write-Warning -Message "The Server indicates that it doesnt support the 'POST' Method. Falling back to 'GET'."
+                        $Method = "GET"
                     }
                 }
 
-            }
+                If ($Method -eq "GET") {
+                    $SCEPResponse = Invoke-WebRequest `
+                        -Method 'GET' `
+                        -Uri "$($ConfigString)?operation=PKIOperation&message=$([uri]::EscapeDataString($SCEPRequestMessage))" `
+                        -Headers @{'Content-Type' = 'application/x-pki-message'}
+                }
 
-        }
-        Catch {
-            Write-Error -Message $PSItem.Exception.Message
-            return  
-        }
+                $SCEPResponse = [Convert]::ToBase64String($ScepResponse.Content)
+
+            }
+            Catch {
+                Write-Error -Message $PSItem.Exception.Message
+                return
+            }
+        
+            Try {
+
+                # Process a response message and return the disposition of the message.
+                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-processresponsemessage
+                $Disposition = $SCEPEnrollmentInterface.ProcessResponseMessage(
+                    $SCEPResponse,
+                    $EncodingType.XCN_CRYPT_STRING_BASE64
+                    )
+
+                # https://docs.microsoft.com/en-us/windows/win32/api/certpol/ne-certpol-x509scepdisposition
+                Switch ($Disposition) {
+
+                    $X509SCEPDisposition.SCEPDispositionFailure {
+
+                        # Delete private key, to avoid dangling keys in the system
+                        Try {
+                            $PrivateKey.Delete()
+                        }
+                        Catch {
+                            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($PrivateKey))
+                            Write-Warning -Message $PSItem.Exception.Message
+                        }
+
+                        $ErrorMessage = ''
+                        $ErrorMessage += "The NDES Server rejected the Certificate Request!`n"
+
+                        # The Failinfo Method is only present in Windows 10
+                        # Windows 8.1 / 2012 R2 Users therefore won't get any fancy error message, sadly
+                        If ([int32](Get-WmiObject Win32_OperatingSystem).BuildNumber -ge $BUILD_NUMBER_WINDOWS_10) {
+
+                            $FailInfo = ($SCEPFailInfo | Where-Object { $_.Code -eq $SCEPEnrollmentInterface.FailInfo() })
+
+                            $ErrorMessage += "SCEP Failure Information: $($FailInfo.Message) ($($FailInfo.Code)) $($FailInfo.Description)`n"
+                            $ErrorMessage += "Additional Information returned by the Server: $($SCEPEnrollmentInterface.Status().Text)`n"
+
+                            If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERT_E_WRONG_USAGE) {
+                                $ErrorMessage += "Possible reason(s): The Challenge Password has been used already."
+                            }
+
+                            If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.TRUST_E_CERT_SIGNATURE) {
+                                $ErrorMessage += "Possible reason(s): The NDES Server requires a Challenge Password but none was supplied."
+                            }
+
+                            If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.ERROR_NOT_FOUND) {
+                                $ErrorMessage += "Possible reason(s): The Challenge Password supplied is unknown to the NDES Server, or it has been used already."
+                            }
+
+                            If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERTSRV_E_BAD_REQUESTSUBJECT) {
+                                $ErrorMessage += "Possible reason(s): The CA denied your request because an invalid Subject was requested."
+                            }
+
+                            If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.RPC_S_SERVER_UNAVAILABLE) {
+                                $ErrorMessage += "Possible reason(s): The NDES Server was unable to contact the Certification Authority."
+                            }
+                        }
+
+                        Write-Error -Message $ErrorMessage
+
+                    }
+
+                    $X509SCEPDisposition.SCEPDispositionPending {
+                        if ($NoPolling) {
+                            Write-Warning -Message @"
+The certificate submit was successful with status ScepDispositionPending, but polling for the issued certificate is disabled!
+The enrollment may be continued after the CA admin has issued the certificate by using the following commands:
+  certreq -f -v -config $($ComputerName)$($PortString) -retrieve $TransactionIdText thecertificate.crt
+  certreq -v -accept thecertificate.crt
+"@
+                        }
+                        Else {
+                            If ($FirstPendingMessage) {
+                                Write-Host "Certificate request pending administrator approval at Certificate Authority"
+                                $EndPollingTime = (Get-Date).AddSeconds($MaxPolling)
+                                Write-Information -MessageData "Will wait for approval until $($EndPollingTime.ToString('HH:mm'))" -Tags "EndPollTime" -InformationAction Continue
+                                $FirstPendingMessage = $False
+                            }
+                            If ((Get-Date) -gt $EndPollingTime) {
+                                Write-Error -Message "Aborts waiting for certificate approval at CA"
+                            }
+                            Else {
+                                $Context = $X509CertificateEnrollmentContext.ContextUser
+                                if ($MachineContext.IsPresent) {
+                                    $Context = $X509CertificateEnrollmentContext.ContextMachine # eller ContextAdministratorForceMachine
+                                }
+                                $SCEPEnrollmentInterface = New-Object -ComObject "X509Enrollment.CX509SCEPEnrollment"
+                                $SCEPEnrollmentInterface.InitializeForPending($Context)
+                                $SCEPEnrollmentInterface.TransactionId($EncodingType.XCN_CRYPT_STRING_HEX) = $TransactionId
+                                $SCEPRequestMessage = $SCEPEnrollmentInterface.CreateRetrievePendingMessage($EncodingType.XCN_CRYPT_STRING_BASE64)
+                            
+                                $WhenRetry = (Get-Date).AddSeconds($PollingInterval).ToString("HH:mm:ss")
+                                Write-Host "Will retry to retrieve certficate at time $($WhenRetry)"
+                                Start-Sleep -s $PollingInterval
+                                Write-Host "Retries retrieving certificate"
+
+                                $DoOperation = $True
+                            }
+                        }
+                    }
+
+                    $X509SCEPDisposition.SCEPDispositionPendingChallenge {
+                        Write-Warning -Message  "The Enrollment was successful with Status ScepDispositionPendingChallenge, which is not yet implemented!"
+                    }
+
+                    $X509SCEPDisposition.SCEPDispositionUnknown {
+                        Write-Error -Message "The Enrollment failed for an unknown Reason."
+                    }
+
+                    $X509SCEPDisposition.SCEPDispositionSuccess {
+
+                        # We load the Certificate into an X509Certificate2 Object
+                        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-get_certificate
+                        Write-Host "Certificate imported successfully"
+                        $CertificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
+                        $CertificateObject.Import(
+                            [Convert]::FromBase64String(
+                                $SCEPEnrollmentInterface.Certificate($EncodingType.XCN_CRYPT_STRING_BASE64)
+                                )
+                            )
+
+                        # Return the resulting Certificate
+                        If ($MachineContext.IsPresent -or ($SigningCert -and ($SigningCert.PSParentPath -match "Machine"))) {
+                            Get-ChildItem -Path "Cert:\LocalMachine\My\$($CertificateObject.Thumbprint)"
+                        }
+                        Else {
+                            Get-ChildItem -Path "Cert:\CurrentUser\My\$($CertificateObject.Thumbprint)"
+                        }
+                    }
+
+                }
+
+            }
+            Catch {
+                Write-Error -Message $PSItem.Exception.Message
+                return  
+            }
+            
+        } # end While
 
         # Cleaning up the COM Objects, avoiding any User Errors to be reported
         $CertificateRequestPkcs10,
