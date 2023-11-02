@@ -73,6 +73,7 @@
     FunctionsToExport = @(
         'Get-NDESOTP',
         'Get-NDESCertificate',
+        'Get-NDESCACertificate',
         'Get-KeyStorageProvider',
         'Get-IssuedCertificate',
         'New-CertificateRequest',

@@ -1,5 +1,12 @@
 ﻿== Changelog PSCertificateEnrollment PowerShell Module
 
+=== 1.0.10 (Nov 2, 2023)
+
+* `Get-NDESCertificate` now supports waiting for certificate requests needing administrator approval for issuing.
+* `Get-NDESCertificate` now cleans up the create Private Key, if the NDES server returns an error, to avoid dangling private keys.
+* `Get-NDESOTP` seems to use NTLM for authentication, at least in a default setup of the NDES server, so user notification states this.
+* `Get-NDESCACertificate` new. Supports downloading CA certificates from the NDES server, written to file, importing into Trusted Auth Root container, or both.
+
 === 1.0.9 (May 30, 2023)
 
 * `Get-IssuedCertificate` supports the UniformResourceIdentifier SAN type now.
