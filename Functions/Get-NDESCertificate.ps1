@@ -78,7 +78,7 @@
 
     .PARAMETER MaxPolling
     Specifies the maximum time in seconds to wait for getting a certificate request that initially returned ScepDispositionPending.
-    Defaults to 3600
+    Defaults to 28800
 
     .PARAMETER PollingInterval
     Specifies the interval in seconds between polling for a certificate where the request initially returned ScepDispositionPending.
