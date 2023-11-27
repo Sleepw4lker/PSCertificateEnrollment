@@ -78,7 +78,7 @@
 
     .PARAMETER MaxPolling
     Specifies the maximum time in seconds to wait for getting a certificate request that initially returned ScepDispositionPending.
-    Defaults to 28800
+    Defaults to 3600
 
     .PARAMETER PollingInterval
     Specifies the interval in seconds between polling for a certificate where the request initially returned ScepDispositionPending.
@@ -260,7 +260,7 @@ Function Get-NDESCertificate {
 
         # SCEP GetCACaps Operation
         Try {
-            $GetCACaps = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACaps").Content
+            $GetCACaps = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACaps" -UseBasicParsing).Content
         }
         Catch {
             Write-Error -Message $PSItem.Exception.Message
@@ -269,7 +269,7 @@ Function Get-NDESCertificate {
 
         # SCEP GetCACert Operation
         Try {
-            $GetCACert = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACert").Content
+            $GetCACert = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACert" -UseBasicParsing).Content
 
             # Decoding the CMS (PKCS#7 Message that was returned from the NDES Server)
             $Pkcs7CaCert = New-Object System.Security.Cryptography.Pkcs.SignedCms
@@ -585,7 +585,8 @@ Function Get-NDESCertificate {
                             -Body ([Convert]::FromBase64String($SCEPRequestMessage)) `
                             -Method 'POST' `
                             -Uri "$($ConfigString)?operation=PKIOperation" `
-                            -Headers @{'Content-Type' = 'application/x-pki-message'}
+                            -Headers @{'Content-Type' = 'application/x-pki-message'} `
+                            -UseBasicParsing
                     }
                     Else {
                         Write-Warning -Message "The Server indicates that it doesnt support the 'POST' Method. Falling back to 'GET'."
@@ -597,7 +598,8 @@ Function Get-NDESCertificate {
                     $SCEPResponse = Invoke-WebRequest `
                         -Method 'GET' `
                         -Uri "$($ConfigString)?operation=PKIOperation&message=$([uri]::EscapeDataString($SCEPRequestMessage))" `
-                        -Headers @{'Content-Type' = 'application/x-pki-message'}
+                        -Headers @{'Content-Type' = 'application/x-pki-message'} `
+                        -UseBasicParsing
                 }
 
                 $SCEPResponse = [Convert]::ToBase64String($ScepResponse.Content)

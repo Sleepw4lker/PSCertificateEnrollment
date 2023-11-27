@@ -91,6 +91,7 @@ Function Get-NDESOTP {
             # Use Windows integrated Authentication
             $Arguments.Add("UseDefaultCredentials", $True)
         }
+        $Arguments.Add("UseBasicParsing", $True)
 
         Try {
             $NdesResponse = Invoke-WebRequest @Arguments

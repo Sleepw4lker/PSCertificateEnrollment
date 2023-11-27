@@ -98,7 +98,7 @@ Function Get-NDESCACertificate {
 
         # SCEP GetCACert Operation
         Try {
-            $GetCACert = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACert").Content
+            $GetCACert = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACert" -UseBasicParsing).Content
 
             # Decoding the CMS (PKCS#7 Message that was returned from the NDES Server)
             $Pkcs7CaCert = New-Object System.Security.Cryptography.Pkcs.SignedCms
