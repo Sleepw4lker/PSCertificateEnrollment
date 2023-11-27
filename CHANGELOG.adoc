@@ -1,5 +1,12 @@
 ﻿== Changelog PSCertificateEnrollment PowerShell Module
 
+=== 1.0.11 (Nov 27, 2023)
+
+* `Get-NDESCertificate` bugfix for MaxPolling argument description.
+* `Get-NDESCertificate` added -UseBasicParsing to Invoke-WebRequest calls, to avoid parsing erros when running as local system account.
+* `Get-NDESOTP` added -UseBasicParsing to Invoke-WebRequest calls.
+* `Get-NDESCACertificate` added -UseBasicParsing to Invoke-WebRequest calls.
+
 === 1.0.10 (Nov 2, 2023)
 
 * `Get-NDESCertificate` now supports waiting for certificate requests needing administrator approval for issuing.
