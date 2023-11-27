@@ -423,6 +423,7 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 # Import Public Functions
 . $ModuleRoot\Functions\Get-NDESOTP.ps1
 . $ModuleRoot\Functions\Get-NDESCertificate.ps1
+. $ModuleRoot\Functions\Get-NDESCACertificate.ps1
 . $ModuleRoot\Functions\Get-KeyStorageProvider.ps1
 . $ModuleRoot\Functions\Get-IssuedCertificate.ps1
 . $ModuleRoot\Functions\New-CertificateRequest.ps1

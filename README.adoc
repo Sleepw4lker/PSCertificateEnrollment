@@ -33,6 +33,7 @@ The following Commands are available:
 
 * `Get-NDESOTP` 
 * `Get-NDESCertificate` 
+* `Get-NDESCACertificate` 
 * `Get-IssuedCertificate` 
 * `New-CertificateRequest` 
 * `New-SignedCertificateRequest` 
@@ -46,7 +47,7 @@ The following Commands are available:
 
 `Get-NDESOTP` retrieves an One-Time-Password (OTP) from the NDES Server.
 
-Uses SSL by default. SSL can be disabled if required, but this is not recommended.
+Uses SSL by default. SSL can be disabled if required, but this is not recommended. Seems to use NTLM authentication in default NDES-server setup.
 
 Uses your Windows Identity by default but can also be passed a PSCredential Object (Get-Credential).
 
@@ -59,6 +60,30 @@ Example: Retrieving a NDES One-Time Password
 Get-NDESOTP `
 -ComputerName 'ndes01.intra.adcslabor.de' `
 -Credential $(Get-Credential)
+----
+
+==== Get-NDESCACertificate
+
+`Get-NDESCACertificate` retrieves the CA certificate(s) from the NDES Server.
+
+The certificates may be written to file, imported into Trusted Root Certification Authorities or both.
+
+Example: Retrieving and exporting CA certificates
+
+[source,powershell]
+----
+Get-NDESCACertificate `
+-ComputerName 'ndes01.intra.adcslabor.de' `
+-Export -CertificateFolder C:\NDES-CA
+----
+
+Example: Retrieving and importing CA certificates
+
+[source,powershell]
+----
+Get-NDESCACertificate `
+-ComputerName 'ndes01.intra.adcslabor.de' `
+-Import
 ----
 
 ==== Get-NDESCertificate
