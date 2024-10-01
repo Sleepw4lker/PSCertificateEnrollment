@@ -47,48 +47,6 @@ The following Commands are available:
 - `Get-ESTCertificate`
 - `Get-ESTCACertificates`
 
-### Get-NDESOTP
-
-`Get-NDESOTP` retrieves an One-Time-Password (OTP) from the NDES Server.
-
-Uses SSL by default. SSL can be disabled if required, but this is not recommended.
-
-Uses your Windows Identity by default but can also be passed a PSCredential Object (Get-Credential).
-
-The `-PasswordLength` Parameter must be adjusted if you do not use the default 8-Character Passwords on the NDES (as it’s only RegEx grabbing the HTML Output).
-
-#### Example: Retrieving a NDES One-Time Password
-
-```powershell
-Get-NDESOTP -ComputerName "ndes01.mydomain.local" -Credential $(Get-Credential)
-```
-
-### Get-SCEPCertificate
-
-`Get-SCEPCertificate` creates and submits an NDES Certificate Request using the _IX509SCEPEnrollment_ Interface available in Windows 8.1 and higher, and retrieves the issued Certificate. The issued Certificate directly gets installed into the respective Certificate store.
-
-It supports Renewal Mode by passing an X509Certificate Object either via the Pipeline or the `-SigningCertificate` Argument. The Certificate must have a private Key, and be issued from the same CA as the new one.
-
-It supports SSL, but doesnt use it by default (not necessary as sensitive Data is protected anyway).
-
-It should work with any server-side SCEP implementation, but was explicitly tested with:
-
-- [Microsoft Network Device Enrollment Service (NDES)](https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/network-device-enrollment-service-overview)
-- [m2trust](https://m2trust.de/en/)
-
-#### Example: Performing a SCEP Certificate Request using a previously-obtained Challenge Request
-
-```powershell
-Get-SCEPCertificate -ComputerName "ndes01.mydomain.local" -Subject "CN=Test" -ChallengePassword "BDE00774A789610F"
-```
-
-#### Example: Performing a SCEP Renewal Request (renewing an existing Certificate via SCEP)
-
-```powershell
-Get-ChildItem -Path Cert:\CurrentUser\My\85CF977C7E32CE808E9D92C61FDB9A43437DC4A2 | 
-Get-SCEPCertificate -ComputerName "ndes01.mydomain.local"
-```
-
 ### New-CertificateRequest
 
 `New-CertificateRequest` builds a Certificate Signing Request (CSR) based on the given Arguments. Can also create self-signed Certificates as well as directly sign the request with a Certificate (to be precise, it’s private Key). For example, you could specify a Certification Authority Certificate as the Signer.
@@ -150,7 +108,7 @@ $a,$b,$c
 #### Example: Creating a Certificate Signing Request (CSR) for a Domain Controller Certificate using a 3072 Bit RSA Key
 
 ```powershell
-New-CertificateRequest -MachineContext -LeyLength 3072 -Subject "CN=dc01.mydomain.local" -Dns "dc01.mydomain.local","mydomain.local","INTRA" -Eku KDCAuthentication,ServerAuthentication,ClientAuthentication,SmartcardLogon
+New-CertificateRequest -MachineContext -LeyLength 3072 -Subject "CN=dc01.mydomain.local" -Dns "dc01.mydomain.local","mydomain.local", "MYDOMAIN" -Eku KDCAuthentication,ServerAuthentication,ClientAuthentication,SmartcardLogon
 ```
 
 #### Example: Creating a Certificate Signing Request (CSR) for a Web Server Certificate, using an ECDSA Key, containing multiple SANs of Type DnsName and IPAdress (and an empty Subject String)
@@ -163,24 +121,6 @@ New-CertificateRequest -Eku ServerAuth -Dns "web1.mydomain.local","web2.mydomain
 
 ```powershell
 New-CertificateRequest -Subject "CN=My-Responder" -Ksp "nCipher Security World Key Storage Provider" -Eku "OCSPSigning" -Aki "060DDD83737C311EDA5E5B677D8C4D663ED5C5BF" -KeyLength 4096 | Out-File CertificateRequestFile.csr -Encoding ascii
-```
-
-### Get-ESTCACertificates
-
-#### Example: Retrieving CA certificates from testrfc7030.com
-
-```powershell
-Get-ESTCACertificates -ComputerName "testrfc7030.com" -Port 8443
-```
-
-### Get-ESTCertificate
-
-#### Example: Requesting a certificate from testrfc7030.com
-
-```powershell
-$csr = New-CertificateRequest -Subject "CN=Test"
-$cert = $csr | Get-ESTCertificate -ComputerName "testrfc7030.com" -Port 8443 -Username "estuser" -Password "estpwd"
-$cert | Install-IssuedCertificate
 ```
 
 ### New-SignedCertificateRequest
@@ -229,6 +169,66 @@ Get-IssuedCertificate -ConfigString "ca01.mydomain.local\My Enterprise CA" -Requ
 $csr = New-CertificateRequest -Subject "CN=Test"
 $response = $csr | Get-IssuedCertificate -ConfigString "ca01.mydomain.local\" -CertificateTemplate "UserTemplate"
 $response.Certificate | Install-IssuedCertificate
+```
+
+### Get-SCEPCertificate
+
+`Get-SCEPCertificate` creates and submits an NDES Certificate Request using the _IX509SCEPEnrollment_ Interface available in Windows 8.1 and higher, and retrieves the issued Certificate. The issued Certificate directly gets installed into the respective Certificate store.
+
+It supports Renewal Mode by passing an X509Certificate Object either via the Pipeline or the `-SigningCertificate` Argument. The Certificate must have a private Key, and be issued from the same CA as the new one.
+
+It supports SSL, but doesnt use it by default (not necessary as sensitive Data is protected anyway).
+
+It should work with any server-side SCEP implementation, but was explicitly tested with:
+
+- [Microsoft Network Device Enrollment Service (NDES)](https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/network-device-enrollment-service-overview)
+- [m2trust](https://m2trust.de/en/)
+
+#### Example: Performing a SCEP Certificate Request using a previously-obtained Challenge Request
+
+```powershell
+Get-SCEPCertificate -ComputerName "ndes01.mydomain.local" -Subject "CN=Test" -ChallengePassword "BDE00774A789610F"
+```
+
+#### Example: Performing a SCEP Renewal Request (renewing an existing Certificate via SCEP)
+
+```powershell
+Get-ChildItem -Path Cert:\CurrentUser\My\85CF977C7E32CE808E9D92C61FDB9A43437DC4A2 | 
+Get-SCEPCertificate -ComputerName "ndes01.mydomain.local"
+```
+
+### Get-NDESOTP
+
+`Get-NDESOTP` retrieves an One-Time-Password (OTP) from the NDES Server.
+
+Uses SSL by default. SSL can be disabled if required, but this is not recommended.
+
+Uses your Windows Identity by default but can also be passed a PSCredential Object (Get-Credential).
+
+The `-PasswordLength` Parameter must be adjusted if you do not use the default 8-Character Passwords on the NDES server (as it’s only RegEx grabbing the HTML Output).
+
+#### Example: Retrieving a NDES One-Time Password
+
+```powershell
+Get-NDESOTP -ComputerName "ndes01.mydomain.local" -Credential $(Get-Credential)
+```
+
+### Get-ESTCACertificates
+
+#### Example: Retrieving CA certificates from testrfc7030.com
+
+```powershell
+Get-ESTCACertificates -ComputerName "testrfc7030.com" -Port 8443
+```
+
+### Get-ESTCertificate
+
+#### Example: Requesting a certificate from testrfc7030.com
+
+```powershell
+$csr = New-CertificateRequest -Subject "CN=Test"
+$cert = $csr | Get-ESTCertificate -ComputerName "testrfc7030.com" -Port 8443 -Username "estuser" -Password "estpwd"
+$cert | Install-IssuedCertificate
 ```
 
 ### Get-KeyStorageProvider
