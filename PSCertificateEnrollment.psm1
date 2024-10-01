@@ -422,7 +422,7 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 
 # Import Public Functions
 . $ModuleRoot\Functions\Get-NDESOTP.ps1
-. $ModuleRoot\Functions\Get-NDESCertificate.ps1
+. $ModuleRoot\Functions\Get-SCEPCertificate.ps1
 . $ModuleRoot\Functions\Get-KeyStorageProvider.ps1
 . $ModuleRoot\Functions\Get-IssuedCertificate.ps1
 . $ModuleRoot\Functions\New-CertificateRequest.ps1
@@ -432,6 +432,8 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Get-RemoteDesktopCertificate.ps1
 . $ModuleRoot\Functions\Set-RemoteDesktopCertificate.ps1
 . $ModuleRoot\Functions\Invoke-AutoEnrollmentTask.ps1
+. $ModuleRoot\Functions\Get-ESTCertificate.ps1
+. $ModuleRoot\Functions\Get-ESTCACertificates.ps1
 
 # Import Private Functions
 . $ModuleRoot\Functions\Convert-DERToBASE64.ps1

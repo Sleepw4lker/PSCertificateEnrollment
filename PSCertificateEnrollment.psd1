@@ -12,7 +12,7 @@
     RootModule = 'PSCertificateEnrollment.psm1'
 
     # Version number of this module.
-    ModuleVersion = '1.0.9'
+    ModuleVersion = '1.0.10'
 
     # Supported PSEditions.
     # https://docs.microsoft.com/en-us/powershell/scripting/gallery/concepts/module-psedition-support
@@ -28,7 +28,7 @@
     CompanyName = 'Uwe Gradenegger'
 
     # Copyright statement for this module
-    Copyright = '(c) 2020-2023 Uwe Gradenegger. All rights reserved.'
+    Copyright = '(c) 2020-2024 Uwe Gradenegger. All rights reserved.'
 
     # Description of the functionality provided by this module
     Description = 'Extends the Built-In PKIClient Module. Building Certificate Signing Requests, Certificate Enrollment via the Microsoft Network Device Enrollment Service (NDES) via the Simple Certificate Enrollment Protocol (SCEP).'
@@ -72,7 +72,7 @@
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
     FunctionsToExport = @(
         'Get-NDESOTP',
-        'Get-NDESCertificate',
+        'Get-SCEPCertificate',
         'Get-KeyStorageProvider',
         'Get-IssuedCertificate',
         'New-CertificateRequest',
@@ -81,7 +81,9 @@
         'Undo-CertificateArchival',
         'Get-RemoteDesktopCertificate',
         'Set-RemoteDesktopCertificate',
-        'Invoke-AutoEnrollmentTask'
+        'Invoke-AutoEnrollmentTask',
+        'Get-ESTCertificate',
+        'Get-ESTCACertificates'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -91,7 +93,9 @@
     VariablesToExport = '*'
 
     # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-    AliasesToExport = @()
+    AliasesToExport = @(
+        'Get-NDESCertificate'
+        )
 
     # DSC resources to export from this module
     # DscResourcesToExport = @()
@@ -111,7 +115,7 @@
             Category = "Scripting Techniques"
 
             # Tags applied to this module. These help with module discovery in online galleries.
-            Tags = @('powershell','scep','ndes','pki','adcs','certificate','x509')
+            Tags = @('powershell','scep','ndes','pki','adcs','certificate','x509','est')
 
             # A URL to the license for this module.
             LicenseUri = 'https://raw.githubusercontent.com/Sleepw4lker/PSCertificateEnrollment/main/LICENSE'

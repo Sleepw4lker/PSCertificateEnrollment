@@ -1,11 +1,11 @@
 ﻿<#
     .SYNOPSIS
-    Requests a Certificate from an NDES Server via the SCEP Protocol.
+    Requests a Certificate from an SCEP Server via the SCEP Protocol.
     This works on Windows 8.1 and newer Operating Systems.
 
     .PARAMETER ComputerName
-    Specifies the Host Name or IP Address of the NDES Server.
-    If using SSL, this must match the NDES Server's identity as specified in its SSL Server Certificate.
+    Specifies the Host Name or IP Address of the SCEP Server.
+    If using SSL, this must match the SCEP Server's identity as specified in its SSL Server Certificate.
 
     .PARAMETER MachineContext
     By default, the Key for Certificate Request gets created in the current User's Context.
@@ -33,13 +33,13 @@
     May be left Empty if you specify a Subject, DnsName or Upn instead.
 
     .PARAMETER ChallengePassword
-    Specifies the Challenge Password used to authenticate to the NDES Server.
-    Not necessary if the NDES Server doesn't require a Password, or if you specify a SigningCert.
+    Specifies the Challenge Password used to authenticate to the SCEP Server.
+    Not necessary if the SCEP Server doesn't require a Password, or if you specify a SigningCert.
 
     .PARAMETER SigningCert
     Specifies the Signing Certificate used to sign the SCEP Certificate Request.
     Can be passed to the Command via the Pipeline.
-    Use this when you already have a Certificate issued by the NDES Server and just want to renew it.
+    Use this when you already have a Certificate issued by the SCEP Server and just want to renew it.
     Subject Information will be taken from this Certificate as otherwise NDES would deny the Request if there is a mismatch.
 
     .PARAMETER Ksp
@@ -65,8 +65,8 @@
     as the SCEP Message's confidential partsd are encrypted with the NDES RA Certificates anyway.
 
     .PARAMETER Port
-    Specifies the Network Port of the NDES Server to be used.
-    Only necessary if your NDES Server is running on a non-default Port for some reason.
+    Specifies the Network Port of the SCEP Server to be used.
+    Only necessary if your SCEP Server is running on a non-default Port for some reason.
     Defaults to Port 80 without SSL and 443 with SSL.
 
     .PARAMETER Method
@@ -74,11 +74,13 @@
     Defaults to "POST".
 
     .OUTPUTS
-    System.Security.Cryptography.X509Certificates.X509Certificate. Returns the issued Certificate returned by the NDES Server.
+    System.Security.Cryptography.X509Certificates.X509Certificate. Returns the issued Certificate returned by the SCEP Server.
 #>
-Function Get-NDESCertificate {
+
+Function Get-SCEPCertificate {
 
     [cmdletbinding()]
+    [Alias("Get-NDESCertificate")]
     param(
         [Parameter(Mandatory=$True)]
         [String]
@@ -234,7 +236,7 @@ Function Get-NDESCertificate {
 
         # SCEP GetCACaps Operation
         Try {
-            $GetCACaps = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACaps").Content
+            $GetCACaps = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACaps").Content
         }
         Catch {
             Write-Error -Message $PSItem.Exception.Message
@@ -243,9 +245,9 @@ Function Get-NDESCertificate {
 
         # SCEP GetCACert Operation
         Try {
-            $GetCACert = (Invoke-WebRequest -uri "$($ConfigString)?operation=GetCACert").Content
+            $GetCACert = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACert").Content
 
-            # Decoding the CMS (PKCS#7 Message that was returned from the NDES Server)
+            # Decoding the CMS (PKCS#7 Message that was returned from the SCEP Server)
             $Pkcs7CaCert = New-Object System.Security.Cryptography.Pkcs.SignedCms
             $Pkcs7CaCert.Decode($GetCACert)
         }
@@ -539,7 +541,7 @@ Function Get-NDESCertificate {
             $EncodingType.XCN_CRYPT_STRING_BASE64
             )
         
-        # Submission to the NDES Server
+        # Submission to the SCEP Server
         Try {
 
             If ($Method -eq "POST") {
@@ -587,7 +589,7 @@ Function Get-NDESCertificate {
                 $X509SCEPDisposition.SCEPDispositionFailure {
 
                     $ErrorMessage = ''
-                    $ErrorMessage += "The NDES Server rejected the Certificate Request!`n"
+                    $ErrorMessage += "The SCEP Server rejected the Certificate Request!`n"
 
                     # The Failinfo Method is only present in Windows 10
                     # Windows 8.1 / 2012 R2 Users therefore won't get any fancy error message, sadly
@@ -603,11 +605,11 @@ Function Get-NDESCertificate {
                         }
 
                         If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.TRUST_E_CERT_SIGNATURE) {
-                            $ErrorMessage += "Possible reason(s): The NDES Server requires a Challenge Password but none was supplied."
+                            $ErrorMessage += "Possible reason(s): The SCEP Server requires a Challenge Password but none was supplied."
                         }
 
                         If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.ERROR_NOT_FOUND) {
-                            $ErrorMessage += "Possible reason(s): The Challenge Password supplied is unknown to the NDES Server, or it has been used already."
+                            $ErrorMessage += "Possible reason(s): The Challenge Password supplied is unknown to the SCEP Server, or it has been used already."
                         }
 
                         If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERTSRV_E_BAD_REQUESTSUBJECT) {
@@ -615,7 +617,7 @@ Function Get-NDESCertificate {
                         }
 
                         If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.RPC_S_SERVER_UNAVAILABLE) {
-                            $ErrorMessage += "Possible reason(s): The NDES Server was unable to contact the Certification Authority."
+                            $ErrorMessage += "Possible reason(s): The SCEP Server was unable to contact the Certification Authority."
                         }
                     }
 
