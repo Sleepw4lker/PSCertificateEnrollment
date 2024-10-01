@@ -175,11 +175,12 @@ Get-ESTCACertificates -ComputerName "testrfc7030.com" -Port 8443
 
 ### Get-ESTCertificate
 
-#### Example: Requestiong a certificate from testrfc7030.com
+#### Example: Requesting a certificate from testrfc7030.com
 
 ```powershell
 $csr = New-CertificateRequest -Subject "CN=Test"
-$csr | Get-ESTCertificate -ComputerName "testrfc7030.com" -Port 8443 -Username "estuser" -Password "estpwd"
+$cert = $csr | Get-ESTCertificate -ComputerName "testrfc7030.com" -Port 8443 -Username "estuser" -Password "estpwd"
+$cert | Install-IssuedCertificate
 ```
 
 ### New-SignedCertificateRequest

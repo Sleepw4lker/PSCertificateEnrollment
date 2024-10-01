@@ -34,6 +34,10 @@ Function Get-ESTCertificate {
         $Reenroll
     )
 
+    begin {
+        Add-Type -AssemblyName System.Security
+    }
+
     process {
 
         <#
@@ -62,6 +66,12 @@ Function Get-ESTCertificate {
             $Operation = "simpleenroll"
         }
 
+        <#
+        RFC 7030 4.2.1
+        When HTTPS POSTing to /simpleenroll, the client MUST include a Simple PKI Request as specified in CMC [RFC5272], Section 3.1 (i.e., a PKCS#10 Certification Request [RFC2986]).
+        The HTTP content-type of "application/pkcs10" is used here. The format of the message is as specified in [RFC5967] with a Content-Transfer-Encoding of "base64" [RFC2045].
+        #>
+
         $Headers = @{
             "Content-Type" = "application/pkcs10"
             "Content-Transfer-Encoding" = "base64"
@@ -79,12 +89,6 @@ Function Get-ESTCertificate {
             $Headers.Add("Authorization", "Basic $EncodedCredentials")
 
         }
-
-        <#
-        RFC 7030 4.2.1
-        When HTTPS POSTing to /simpleenroll, the client MUST include a Simple PKI Request as specified in CMC [RFC5272], Section 3.1 (i.e., a PKCS#10 Certification Request [RFC2986]).
-        The HTTP content-type of "application/pkcs10" is used here. The format of the message is as specified in [RFC5967] with a Content-Transfer-Encoding of "base64" [RFC2045].
-        #>
 
         $Response = Invoke-WebRequest -Method POST -Uri "https://${ComputerName}:${Port}/${Suffix}/${Operation}" -Headers $Headers -Body $CertificateRequest
 
