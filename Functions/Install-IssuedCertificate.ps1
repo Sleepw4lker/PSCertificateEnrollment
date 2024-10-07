@@ -49,7 +49,12 @@ Function Install-IssuedCertificate {
 
         [Parameter(Mandatory=$False)]
         [Switch]
-        $Force = $False
+        $Force = $False,
+
+        [Parameter(Mandatory=$False)]
+        [ValidateNotNullOrEmpty()]
+        [String]
+        $FriendlyName
     )
 
     begin {}
@@ -108,6 +113,17 @@ Function Install-IssuedCertificate {
         }
         Finally {
             [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($EnrollmentObject))
+        }
+
+        if ($MachineContext.IsPresent) {
+            $Certificate = Get-ChildItem -Path "Cert:\LocalMachine\My\$($Certificate.Thumbprint)"
+        }
+        else {
+            $Certificate = Get-ChildItem -Path "Cert:\CurrentUser\My\$($Certificate.Thumbprint)"
+        }
+
+        if ($FriendlyName) {
+            $Certificate.FriendlyName = $FriendlyName
         }
 
         # Return the Certificate if successful
