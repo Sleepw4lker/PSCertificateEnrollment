@@ -31,7 +31,7 @@
     Copyright = '(c) 2020-2024 Uwe Gradenegger. All rights reserved.'
 
     # Description of the functionality provided by this module
-    Description = 'Extends the Built-In PKIClient Module. Building Certificate Signing Requests, Certificate Enrollment via the Microsoft Network Device Enrollment Service (NDES) via the Simple Certificate Enrollment Protocol (SCEP).'
+    Description = 'PowerShell Module for various PKI-related tasks.'
 
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '5.1'
@@ -83,7 +83,10 @@
         'Set-RemoteDesktopCertificate',
         'Invoke-AutoEnrollmentTask',
         'Get-ESTCertificate',
-        'Get-ESTCACertificates'
+        'Get-ESTCACertificates',
+        'Get-XCEPEnrollmentPolicy',
+        'Clear-XCEPEnrollmentPolicyCache',
+        'Get-WSTEPResponse'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

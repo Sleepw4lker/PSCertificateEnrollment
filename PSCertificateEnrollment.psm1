@@ -434,6 +434,9 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Invoke-AutoEnrollmentTask.ps1
 . $ModuleRoot\Functions\Get-ESTCertificate.ps1
 . $ModuleRoot\Functions\Get-ESTCACertificates.ps1
+. $ModuleRoot\Functions\Get-XCEPEnrollmentPolicy
+. $ModuleRoot\Functions\Clear-XCEPEnrollmentPolicyCache.ps1
+. $ModuleRoot\Functions\Get-WSTEPResponse.ps1
 
 # Import Private Functions
 . $ModuleRoot\Functions\Convert-DERToBASE64.ps1
