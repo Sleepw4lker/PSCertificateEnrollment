@@ -4,20 +4,30 @@ PowerShell Module for various PKI-related tasks like:
 
 - Creating Certificate Signing requests
 - Creating Self-Signed Certificates or Certificates signed with a given Key
+- Requesting or Renewing User or Machine Certificates via one of the following protocols:
+    - [Windows Client Certificate Enrollment Protocol (MS-WCCE)](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-wcce)
+    - [WS-Trust X.509v3 Token Enrollment Extensions (MS-WSTEP)](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-wstep)
+    - [Simple Certificate Enrollment Protocol (SCEP)](https://datatracker.ietf.org/doc/html/rfc8894)
+    - [Enrollment over Secure Transport (EST)](https://datatracker.ietf.org/doc/html/rfc7030)
 - Signing a Certificate Request with an Enrollment Agent Certificate prior to Submission to a Certification Authority
-- Submitting Certificate Requests to a Certification Authority via DCOM and WSTEP Protocols and retrieving the response
 - Installing issued Certificates after the Certificate Request has been approved by a Certificartion Authority
-- Requesting or Renewing User or Machine Certificates via the [Simple Certificate Enrollment Protocol (SCEP)](https://datatracker.ietf.org/doc/html/rfc8894)
-- Requesting or Renewing User or Machine Certificates via the [Enrollment over Secure Transport (EST) protocol](https://datatracker.ietf.org/doc/html/rfc7030)
 - Identifying and configuring the Remote Desktop Session Host Certificate of a machine
 
-The module can be obtained via the [PowerShell Gallery](https://www.powershellgallery.com/packages/PSCertificateEnrollment).
+It is (mainly) intended for Client-Side Tasks inside the Microsoft PKI Ecosystem and is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any `certutil` or `openssl` commands. No additional binary Code (e.g. a DLL etc.) necessary to deploy.
 
-It is intended for Client-Side Tasks inside the Microsoft PKI Ecosystem.
+> For securing a Microsoft Certification Authority, take a look at the [Tame My Certs policy module for Active Directory Certificate Services](https://github.com/Sleepw4lker/TameMyCerts).
 
 > For managing a Microsoft Certification Authority, take a look at the awesome [PSPKI Module](https://github.com/PKISolutions/PSPKI).
 
-It is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any `certutil` or `openssl` commands. No additional binary Code (e.g. a DLL etc.) necessary to deploy. The Module and it's files are digitally signed when obtaining it from the PowerShell Gallery.
+## Installing
+
+The module can easily be installed via the [PowerShell Gallery](https://www.powershellgallery.com/packages/PSCertificateEnrollment).
+
+```powershell
+Install-Module -Name PSCertificateEnrollment
+```
+
+> The Module and it's files are digitally signed when obtaining it from the PowerShell Gallery.
 
 ## Supported Operating Systems
 
@@ -25,7 +35,7 @@ It is built out of pure PowerShell Script Code (using .NET and Win32 API). No wr
 - Windows 10 / Windows Server 2016,2019
 - Windows 8.1 / Windows Server 2012 R2 [Windows PowerShell 5.1](https://docs.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/setup/install-configure?view=powershell-5.1) must be installed)
 
-Earlier Windows Version since Windows Vista/Server 2008 may work, but are not supported. `Get-SCEPCertificate` will definitely not work on Windows Operating Systems below 8.1/Server 2012 R2.
+Earlier Windows Version since Windows Vista/Server 2008 may work, but are not supported. `Get-SCEPCertificate` will definitely **not** work on Windows Operating Systems below 8.1/Server 2012 R2.
 
 PowerShell Core and therefore Linux are also not supported, as the Win32 API is not available on these.
 
@@ -139,18 +149,25 @@ $csr | New-SignedCertificateRequest -SigningCert $eacert
 
 `Get-IssuedCertificate` allows for Submission of a Certificate Request to a Certification Authority. It also allows for retrieval of a previously issued Certificate from a Certification Authority.
 
-#### Example: Creating a Certificate Request and submitting it to a Certification Authority
+#### Example: Creating a Certificate Request and submitting it to a Certification Authority via MS-WCCE
 
 ```powershell
 $csr = New-CertificateRequest -Subject "CN=Test"
 $csr | Get-IssuedCertificate -ConfigString "ca01.mydomain.local\My Enterprise CA" -CertificateTemplate "UserTemplate"
 ```
 
-#### Example: Creating a Certificate Request and submitting it to a Certification Authority via WSTEP (aka Certificate Enrollment Web Service, CES) using Username and Password Authentication
+#### Example: Creating a Certificate Request and submitting it to a Certification Authority via MS-WSTEP using Kerberos Authentication
 
 ```powershell
 $csr = New-CertificateRequest -Subject "CN=Test"
-$csr | Get-IssuedCertificate -ConfigString "https://ces01.mydomain.local/ADCS%20Labor%20Issuing%&20CA%201_CES_UsernamePassword/service.svc/CES" -CertificateTemplate "UserTemplate" -Credential (Get-Credential)
+$csr | Get-IssuedCertificate -ConfigString "https://wstep1ca01.wstep1.local/My%20Enterprise%20CA%201_CES_Kerberos/service.svc/CES" -CertificateTemplate "UserTemplate"
+```
+
+#### Example: Creating a Certificate Request and submitting it to a Certification Authority via WSTEP using Username and Password Authentication
+
+```powershell
+$csr = New-CertificateRequest -Subject "CN=Test"
+$csr | Get-IssuedCertificate -ConfigString "https://ces01.mydomain.local/My%20Enterprise%20CA%201_CES_UsernamePassword/service.svc/CES" -CertificateTemplate "UserTemplate" -Credential (Get-Credential)
 ```
 
 #### Example: Retrieving an issued Certificate for a previously submitted Certificate request
@@ -177,7 +194,7 @@ $response.Certificate | Install-IssuedCertificate
 
 It supports Renewal Mode by passing an X509Certificate Object either via the Pipeline or the `-SigningCertificate` Argument. The Certificate must have a private Key, and be issued from the same CA as the new one.
 
-It supports SSL, but doesnt use it by default (not necessary as sensitive Data is protected anyway).
+It supports SSL, but doesnt use it by default (not necessary as sensitive data is protected on protocol-level).
 
 It should work with any server-side SCEP implementation, but was explicitly tested with:
 
@@ -233,7 +250,7 @@ $cert | Install-IssuedCertificate
 
 ### Get-KeyStorageProvider
 
-`Get-KeyStorageProvider` enumerates all Cryptographic Service Providers (CSP) and Key Storage Providers (KSP) installed on the local machine.
+`Get-KeyStorageProvider` enumerates all [Cryptographic Service Providers (CSP) and Key Storage Providers (KSP)](https://www.gradenegger.eu/en/basics-cryptographic-service-provider-csp-and-key-storage-provider-ksp/) installed on the local machine.
 
 #### Example: List all CSPs and KSPs available on the machine
 
