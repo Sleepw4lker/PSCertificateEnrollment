@@ -35,6 +35,10 @@ Function Get-ESTCertificate {
     )
 
     begin {
+        
+        # This hides the Status Indicators of the Invoke-WebRequest Calls later on
+        $ProgressPreference = 'SilentlyContinue'
+
         Add-Type -AssemblyName System.Security
     }
 
@@ -90,7 +94,7 @@ Function Get-ESTCertificate {
 
         }
 
-        $Response = Invoke-WebRequest -Method POST -Uri "https://${ComputerName}:${Port}/${Suffix}/${Operation}" -Headers $Headers -Body $CertificateRequest
+        $Response = Invoke-WebRequest -Method POST -Uri "https://${ComputerName}:${Port}/${Suffix}/${Operation}" -Headers $Headers -Body $CertificateRequest -UseBasicParsing
 
         <#
         RFC 7030 4.2.3

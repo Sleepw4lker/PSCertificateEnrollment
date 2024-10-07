@@ -18,12 +18,16 @@ Function Get-ESTCACertificates {
     )
 
     begin {
+        
+        # This hides the Status Indicators of the Invoke-WebRequest Calls later on
+        $ProgressPreference = 'SilentlyContinue'
+
         Add-Type -AssemblyName System.Security
     }
 
     process {
 
-        $Response = Invoke-WebRequest -Uri "https://${ComputerName}:${Port}/${Suffix}/cacerts"
+        $Response = Invoke-WebRequest -Uri "https://${ComputerName}:${Port}/${Suffix}/cacerts" -UseBasicParsing
       
         if ($Response.StatusCode -ne 200) {
             $Response

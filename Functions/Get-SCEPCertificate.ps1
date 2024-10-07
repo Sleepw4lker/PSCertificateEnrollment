@@ -214,10 +214,10 @@ Function Get-SCEPCertificate {
 
     begin  {
 
-        Add-Type -AssemblyName System.Security
-
         # This hides the Status Indicators of the Invoke-WebRequest Calls later on
         $ProgressPreference = 'SilentlyContinue'
+
+        Add-Type -AssemblyName System.Security
 
         # Assembling the Configuration String, which is the SCEP URL in this Case
         If ($UseSSL)
@@ -236,7 +236,7 @@ Function Get-SCEPCertificate {
 
         # SCEP GetCACaps Operation
         Try {
-            $GetCACaps = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACaps").Content
+            $GetCACaps = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACaps" -UseBasicParsing).Content
         }
         Catch {
             Write-Error -Message $PSItem.Exception.Message
@@ -245,7 +245,7 @@ Function Get-SCEPCertificate {
 
         # SCEP GetCACert Operation
         Try {
-            $GetCACert = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACert").Content
+            $GetCACert = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACert" -UseBasicParsing).Content
 
             # Decoding the CMS (PKCS#7 Message that was returned from the SCEP Server)
             $Pkcs7CaCert = New-Object System.Security.Cryptography.Pkcs.SignedCms
@@ -551,7 +551,8 @@ Function Get-SCEPCertificate {
                         -Body ([Convert]::FromBase64String($SCEPRequestMessage)) `
                         -Method 'POST' `
                         -Uri "$($ConfigString)?operation=PKIOperation" `
-                        -Headers @{'Content-Type' = 'application/x-pki-message'}
+                        -Headers @{'Content-Type' = 'application/x-pki-message'} `
+                        -UseBasicParsing
                 }
                 Else {
                     Write-Warning -Message "The Server indicates that it doesnt support the 'POST' Method. Falling back to 'GET'."
@@ -563,7 +564,8 @@ Function Get-SCEPCertificate {
                 $SCEPResponse = Invoke-WebRequest `
                     -Method 'GET' `
                     -Uri "$($ConfigString)?operation=PKIOperation&message=$([uri]::EscapeDataString($SCEPRequestMessage))" `
-                    -Headers @{'Content-Type' = 'application/x-pki-message'}
+                    -Headers @{'Content-Type' = 'application/x-pki-message'} `
+                    -UseBasicParsing
             }
 
             $SCEPResponse = [Convert]::ToBase64String($ScepResponse.Content)

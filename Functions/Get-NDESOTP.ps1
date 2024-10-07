@@ -51,8 +51,11 @@ Function Get-NDESOTP {
 
     begin {
 
+        # This hides the Status Indicators of the Invoke-WebRequest Calls later on
+        $ProgressPreference = 'SilentlyContinue'
+
         If ($NoSSL) { 
-            Write-Warning "Not using SSL. Authentication Credentials will be sent in Cleartext"
+            Write-Warning "Not using SSL. Authentication Credentials will be sent in Cleartext!"
             $Protocol = "http" 
         }
         Else {
@@ -65,6 +68,7 @@ Function Get-NDESOTP {
 
         $Arguments = @{
             Uri = "$($Protocol)://$($ComputerName)/certsrv/mscep_admin/"
+            UseBasicParsing = $True
         }
 
         If ($Credential) {
