@@ -160,6 +160,34 @@ Function New-CertificateRequest {
         [String[]]
         $Eku,
 
+        [Alias("ApplicationPolicy")]
+        [Parameter(Mandatory=$False)]
+        [ValidateSet(
+            "EnrollmentAgent",
+            "ClientAuthentication",
+            "CodeSigning",
+            "LifeTimeSigning",
+            "DocumentSigning",
+            "DocumentEncryption",
+            "EncryptingFileSystem",
+            "FileRecovery",
+            "IPSecEndSystem",
+            "IPSecIKEIntermediate",
+            "IPSecTunnelEndpoint",
+            "IPSecUser",
+            "KeyRecovery",
+            "KDCAuthentication",
+            "SecureEmail",
+            "ServerAuthentication",
+            "SmartCardLogon",
+            "TimeStamping",
+            "OCSPSigning",
+            "RemoteDesktopAuthentication",
+            "PrivateKeyArchival"
+            )]
+        [String[]]
+        $AppPolicy,
+
         [Alias("DnsName")]
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
@@ -644,6 +672,33 @@ Function New-CertificateRequest {
 
         }
 
+
+        # Set the Application Policies Extension if specified as Argument
+        If ($AppPolicy) {
+
+            # https://learn.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionmsapplicationpolicies
+            $ApplicationPoliciesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionMSApplicationPolicies
+
+            $ApplicationPolicyOids = New-Object -ComObject X509Enrollment.CCertificatePolicies.1
+            
+            $AppPolicy | Sort-Object | Get-Unique | ForEach-Object -Process {
+            
+                $ApplicationPolicyOid = New-Object -ComObject X509Enrollment.CObjectId
+                $ApplicationPolicyOid.InitializeFromValue($EkuNameToOidTable[$_])
+            
+                $CertificatePolicy = New-Object -ComObject X509Enrollment.CCertificatePolicy
+                $CertificatePolicy.Initialize($ApplicationPolicyOid)
+                $ApplicationPolicyOids.Add($CertificatePolicy)
+            
+            }
+            
+            $ApplicationPoliciesExtension.InitializeEncode($ApplicationPolicyOids)
+
+            # Adding the Extension to the Certificate
+            $CertificateRequestPkcs10.X509Extensions.Add($ApplicationPoliciesExtension)
+
+        }
+
         # Set the Subject Alternative Names Extension if specified as Argument
         If ($Upn -or $Email -or $Dns -or $IP -or $Uri) {
 
@@ -909,6 +964,10 @@ Function New-CertificateRequest {
         $EnhancedKeyUsageExtension,
         $EnhancedKeyUsageOids,
         $EnhancedKeyUsageOid,
+        $ApplicationPoliciesExtension,
+        $ApplicationPolicyOids,
+        $ApplicationPolicyOid,
+        $CertificatePolicy,
         $SubjectAlternativeNamesExtension,
         $Sans,
         $AlternativeNameObject,
