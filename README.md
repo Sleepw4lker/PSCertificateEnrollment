@@ -10,10 +10,12 @@ PowerShell Module for various PKI-related tasks like:
     - [Simple Certificate Enrollment Protocol (SCEP)](https://datatracker.ietf.org/doc/html/rfc8894)
     - [Enrollment over Secure Transport (EST)](https://datatracker.ietf.org/doc/html/rfc7030)
 - Signing a Certificate Request with an Enrollment Agent Certificate prior to Submission to a Certification Authority
-- Installing issued Certificates after the Certificate Request has been approved by a Certificartion Authority
+- Installing issued Certificates after the Certificate Request has been approved by a Certification Authority
 - Identifying and configuring the Remote Desktop Session Host Certificate of a machine
 
-It is (mainly) intended for Client-Side Tasks inside the Microsoft PKI Ecosystem and is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any `certutil` or `openssl` commands. No additional binary Code (e.g. a DLL etc.) necessary to deploy.
+It is (mainly) intended for Client-Side Tasks inside the Microsoft PKI Ecosystem and is built out of pure PowerShell Script Code (using .NET and Win32 API). No wrapping of any `certutil` or `openssl` commands. No additional binary Code (e.g. a DLL etc.) necessary to deploy. I mainly use the module for testing PKI protocol implementations as well as certificate authority deployments.
+
+> PSCertificateenrollment can also be used as a Penetration testing tool, e.g. for deployments using [Microsoft Network Device Enrollment Service (NDES)](https://www.gradenegger.eu/en/from-zero-to-enterprise-administrator-through-the-network-device-registration-service-ndes/) or to [directly sign certificates bypassing the certification authority service](https://www.gradenegger.eu/en/signing-certificates-bypassing-the-certification-authority/).
 
 > For securing a Microsoft Certification Authority, take a look at the [Tame My Certs policy module for Active Directory Certificate Services](https://github.com/Sleepw4lker/TameMyCerts).
 
@@ -234,6 +236,8 @@ Get-NDESOTP -ComputerName "ndes01.mydomain.local" -Credential $(Get-Credential)
 
 #### Example: Retrieving CA certificates from testrfc7030.com
 
+> Note that for this service, it is necessary to establish trust relationship to the Root CA as [described on their landing page](http://testrfc7030.com/). Use at your won risk.
+
 ```powershell
 Get-ESTCACertificates -ComputerName "testrfc7030.com" -Port 8443
 ```
@@ -241,6 +245,8 @@ Get-ESTCACertificates -ComputerName "testrfc7030.com" -Port 8443
 ### Get-ESTCertificate
 
 #### Example: Requesting a certificate from testrfc7030.com
+
+> Note that for this service, it is necessary to establish trust relationship to the Root CA as [described on their landing page](http://testrfc7030.com/). Use at your won risk.
 
 ```powershell
 $csr = New-CertificateRequest -Subject "CN=Test"
