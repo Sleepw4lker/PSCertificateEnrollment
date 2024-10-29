@@ -46,7 +46,12 @@ Function Get-NDESOTP {
 
         [Parameter(Mandatory=$False)]
         [Switch]
-        $BasicAuthentication
+        $BasicAuthentication,
+
+        [Parameter(Mandatory=$False)]
+        [ValidateNotNullOrEmpty()]
+        [String]
+        $Suffix = "certsrv/mscep_admin"
     )
 
     begin {
@@ -67,7 +72,7 @@ Function Get-NDESOTP {
     process {
 
         $Arguments = @{
-            Uri = "$($Protocol)://$($ComputerName)/certsrv/mscep_admin/"
+            Uri = "$($Protocol)://$($ComputerName)/$($Suffix)/"
             UseBasicParsing = $True
         }
 
