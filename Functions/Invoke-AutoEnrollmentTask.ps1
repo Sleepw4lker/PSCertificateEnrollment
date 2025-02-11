@@ -5,7 +5,11 @@ function Invoke-AutoEnrollmentTask {
         [Alias("Machine")]
         [Parameter(Mandatory=$False)]
         [Switch]
-        $MachineContext = $False
+        $MachineContext = $False,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $Wait
     )
 
     begin {}
@@ -34,18 +38,19 @@ function Invoke-AutoEnrollmentTask {
 
         Try {
 
-            $TaskScheduler = New-Object -ComObject("Schedule.Service")
+            $TaskScheduler = New-Object -ComObject "Schedule.Service"
             $TaskScheduler.Connect()
 
             $UserTask = $TaskScheduler.GetFolder("Microsoft\Windows\CertificateServicesClient").GetTask($TaskName)
 
             # https://docs.microsoft.com/en-us/windows/win32/taskschd/registeredtask-runex
-            [void]($UserTask.RunEx(
-                $null,
-                $Flags,
-                0,
-                $null
-            ))
+            [void]($UserTask.RunEx($null, $Flags, 0, $null))
+
+            if ($Wait.IsPresent) {
+                do {
+                    Start-Sleep -Seconds 1
+                } while ((Get-ScheduledTask -TaskPath \Microsoft\Windows\CertificateServicesClient\ -TaskName $TaskName).PSBase.CimInstanceProperties['State'].Value -eq [Microsoft.PowerShell.Cmdletization.GeneratedTypes.ScheduledTask.StateEnum]::Running)
+            }
 
             return $True
 
