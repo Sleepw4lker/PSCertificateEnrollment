@@ -12,7 +12,7 @@
     RootModule = 'PSCertificateEnrollment.psm1'
 
     # Version number of this module.
-    ModuleVersion = '1.0.10'
+    ModuleVersion = '1.0.11'
 
     # Supported PSEditions.
     # https://docs.microsoft.com/en-us/powershell/scripting/gallery/concepts/module-psedition-support

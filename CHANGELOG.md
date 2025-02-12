@@ -1,5 +1,9 @@
 ﻿# Changelog for the PSCertificateEnrollment PowerShell Module
 
+## 1.0.11 (tbd)
+
+- `New-CertificateRequest` now supports a `-CertificateTemplate` argument which allows sppecifying the Object Identifier of a certificate template and build the V2 Certificate Template extension out of it and add it to the Certificate Request. This allows specifying the certificate template when requesting for certificates over MS-WCCE or MS-WSTEP.
+
 ## 1.0.10 (Feb 11, 2025)
 
 - `Get-NDESCertificate` is renamed to `Get-SCEPCertificate` (as it works perfectly well with other SCEP server implementations). `Get-NDESCertificate` is kept as an Alias for backwards compatibility.

@@ -132,6 +132,11 @@ Function New-CertificateRequest {
         [String]
         $Subject,
 
+        [Parameter(Mandatory=$False)]
+        [ValidatePattern("^([0-2])((\.0)|(\.[1-9][0-9]*))*$")]
+        [String]
+        $CertificateTemplate,
+
         [Alias("EnhancedKeyUsage")]
         [Parameter(Mandatory=$False)]
         [ValidateSet(
@@ -650,6 +655,22 @@ Function New-CertificateRequest {
             $CertificateRequestPkcs10.X509Extensions.Add($BasicConstraintsExtension)
         }
 
+        If ($CertificateTemplate) {
+
+            # Version 2 Certificate Template Information
+            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensiontemplate
+
+            $TemplateExtension = New-Object -ComObject X509Enrollment.CX509ExtensionTemplate
+
+            $TemplateOid = New-Object -ComObject X509Enrollment.CObjectId
+            $TemplateOid.InitializeFromValue($CertificateTemplate)
+
+            $TemplateExtension.InitializeEncode($TemplateOid, 100, 0)
+
+            $CertificateRequestPkcs10.X509Extensions.Add($TemplateExtension)
+                                
+        }
+
         # Set the Enhanced Key Usages Extension if specified as Argument
         If ($Eku) {
     
@@ -968,6 +989,7 @@ Function New-CertificateRequest {
         $ApplicationPolicyOids,
         $ApplicationPolicyOid,
         $CertificatePolicy,
+        $TemplateExtension,
         $SubjectAlternativeNamesExtension,
         $Sans,
         $AlternativeNameObject,
