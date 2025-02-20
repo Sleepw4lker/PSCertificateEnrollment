@@ -22,13 +22,8 @@ Function Get-ESTCertificate {
         $Suffix = ".well-known/est",
 
         [Parameter(Mandatory=$False)]
-        [String]
-        $Username,
-
-        [Parameter(Mandatory=$False)]
-        [ValidateNotNullOrEmpty()]
-        [String]
-        $Password,
+        [System.Management.Automation.PSCredential]
+        $Credential,
 
         [Switch]
         $Reenroll
@@ -38,8 +33,6 @@ Function Get-ESTCertificate {
         
         # This hides the Status Indicators of the Invoke-WebRequest Calls later on
         $ProgressPreference = 'SilentlyContinue'
-
-        Add-Type -AssemblyName System.Security
     }
 
     process {
@@ -87,6 +80,11 @@ Function Get-ESTCertificate {
             RFC 7030 3.2.3
             A client MAY set the username to the empty string ("") if it is presenting a password that is not associated with a username.
             #>
+
+            $Username = $Credential.UserName,
+            $Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+            )
 
             $EncodedCredentials = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$($Username):$($Password)"))
 

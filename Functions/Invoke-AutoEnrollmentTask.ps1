@@ -5,7 +5,7 @@ function Invoke-AutoEnrollmentTask {
         [Alias("Machine")]
         [Parameter(Mandatory=$False)]
         [Switch]
-        $MachineContext = $False,
+        $MachineContext,
 
         [Parameter(Mandatory=$false)]
         [switch]
@@ -41,10 +41,10 @@ function Invoke-AutoEnrollmentTask {
             $TaskScheduler = New-Object -ComObject "Schedule.Service"
             $TaskScheduler.Connect()
 
-            $UserTask = $TaskScheduler.GetFolder("Microsoft\Windows\CertificateServicesClient").GetTask($TaskName)
+            $Task = $TaskScheduler.GetFolder("Microsoft\Windows\CertificateServicesClient").GetTask($TaskName)
 
             # https://docs.microsoft.com/en-us/windows/win32/taskschd/registeredtask-runex
-            [void]($UserTask.RunEx($null, $Flags, 0, $null))
+            [void]($Task.RunEx($null, $Flags, 0, $null))
 
             if ($Wait.IsPresent) {
                 do {
@@ -60,7 +60,7 @@ function Invoke-AutoEnrollmentTask {
             return
         }
         Finally {
-            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($UserTask))
+            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($Task))
             [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($TaskScheduler))
         }
     }

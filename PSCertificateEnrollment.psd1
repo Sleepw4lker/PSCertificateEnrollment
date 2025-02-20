@@ -28,7 +28,7 @@
     CompanyName = 'Uwe Gradenegger'
 
     # Copyright statement for this module
-    Copyright = '(c) 2020-2024 Uwe Gradenegger. All rights reserved.'
+    Copyright = '(c) 2020-2025 Uwe Gradenegger. All rights reserved.'
 
     # Description of the functionality provided by this module
     Description = 'PowerShell Module for various PKI-related tasks.'
@@ -55,7 +55,9 @@
     # RequiredModules = @()
 
     # Assemblies that must be loaded prior to importing this module
-    # RequiredAssemblies = @()
+    RequiredAssemblies = @(
+        'System.Security'
+    )
 
     # Script files (.ps1) that are run in the caller's environment prior to importing this module.
     # ScriptsToProcess = @()
@@ -85,7 +87,10 @@
         'Get-ESTCertificate',
         'Get-ESTCACertificates',
         'Get-XCEPEnrollmentPolicy',
-        'Clear-XCEPEnrollmentPolicyCache',
+        'New-EnrollmentPolicy',
+        'Get-EnrollmentPolicy',
+        'Remove-EnrollmentPolicy',
+        'Clear-EnrollmentPolicyCache',
         'Get-WSTEPResponse'
     )
 
@@ -97,8 +102,9 @@
 
     # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
     AliasesToExport = @(
-        'Get-NDESCertificate'
-        )
+        'Get-NDESCertificate',
+        'Clear-XCEPEnrollmentPolicyCache'
+    )
 
     # DSC resources to export from this module
     # DscResourcesToExport = @()
@@ -118,7 +124,30 @@
             Category = "Scripting Techniques"
 
             # Tags applied to this module. These help with module discovery in online galleries.
-            Tags = @('powershell','scep','ndes','pki','adcs','certificate','x509','est')
+            Tags = @(
+                'SCEP',
+                'NDES',
+                'PKI',
+                'ADCS',
+                'CA',
+                'Certificate',
+                'CertificateServices',
+                'X509',
+                'X.509',
+                'EST',
+                'MS-WCCE',
+                'MS-XCEP',
+                'MS-WSTEP',
+                'Template',
+                'S/MIME',
+                'EnrollmentPolicy',
+                'Subject',
+                'SAN',
+                'KeyUsage',
+                'ExtendedKeyUsage',
+                'EKU',
+                'Windows'
+            )
 
             # A URL to the license for this module.
             LicenseUri = 'https://raw.githubusercontent.com/Sleepw4lker/PSCertificateEnrollment/main/LICENSE'

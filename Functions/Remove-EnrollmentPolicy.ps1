@@ -1,12 +1,19 @@
-function Clear-XCEPEnrollmentPolicyCache {
+function Remove-EnrollmentPolicy {
 
-    [cmdletbinding()]
+    [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$True,ValueFromPipeline=$true)]
+        [ValidatePattern("^[0-9a-fA-F]{40}$")]
+        [String]
+        $Identifier,
+
         [Alias("Machine")]
         [Parameter(Mandatory=$False)]
         [Switch]
-        $MachineContext = $False
+        $MachineContext
     )
+
+    begin {}
 
     process {
 
@@ -19,18 +26,15 @@ function Clear-XCEPEnrollmentPolicyCache {
                 return
             }
 
-            $Path = "$env:ProgramData\Microsoft\Windows\X509Enrollment"
+            $RegistryRoot = "HKLM:\Software\Microsoft\Cryptography\PolicyServers"
         }
         else {
-            
-            $Path = "$env:USERPROFILE\AppData\Local\Microsoft\Windows\X509Enrollment"
+            $RegistryRoot = "HKCU:\Software\Microsoft\Cryptography\PolicyServers"
         }
-        
-        Get-ChildItem -Path $Path | ForEach-Object -Process {
-            Write-Verbose -Message "Deleting $($_.FullName)"
-            $_ | Remove-Item -Force
-        }
+
+        Remove-Item -Path "$RegistryRoot\$Identifier" -Force
 
     }
 
+    end {}
 }

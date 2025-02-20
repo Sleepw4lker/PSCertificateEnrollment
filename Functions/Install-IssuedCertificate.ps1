@@ -45,7 +45,7 @@ Function Install-IssuedCertificate {
         [Alias("Machine")]
         [Parameter(Mandatory=$False)]
         [Switch]
-        $MachineContext = $False,
+        $MachineContext,
 
         [Parameter(Mandatory=$False)]
         [Switch]

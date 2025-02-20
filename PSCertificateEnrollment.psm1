@@ -1,9 +1,4 @@
-﻿If ($PSVersionTable.PSEdition -ne "Desktop") {
-    Write-Error -Message "This module is only compatible with the Desktop Edition of Windows PowerShell"
-    return
-}
-
-# https://docs.microsoft.com/en-us/windows/release-information/
+﻿# https://docs.microsoft.com/en-us/windows/release-information/
 New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_7 -Value 7601
 New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_8_1 -Value 9600
 New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_10 -Value 10240
@@ -434,8 +429,11 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Invoke-AutoEnrollmentTask.ps1
 . $ModuleRoot\Functions\Get-ESTCertificate.ps1
 . $ModuleRoot\Functions\Get-ESTCACertificates.ps1
-. $ModuleRoot\Functions\Get-XCEPEnrollmentPolicy
-. $ModuleRoot\Functions\Clear-XCEPEnrollmentPolicyCache.ps1
+. $ModuleRoot\Functions\Get-XCEPEnrollmentPolicy.ps1
+. $ModuleRoot\Functions\New-EnrollmentPolicy.ps1
+. $ModuleRoot\Functions\Get-EnrollmentPolicy.ps1
+. $ModuleRoot\Functions\Remove-EnrollmentPolicy.ps1
+. $ModuleRoot\Functions\Clear-EnrollmentPolicyCache.ps1
 . $ModuleRoot\Functions\Get-WSTEPResponse.ps1
 
 # Import Private Functions
@@ -444,7 +442,7 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Convert-StringToDER.ps1
 . $ModuleRoot\Functions\Convert-StringToHex.ps1
 . $ModuleRoot\Functions\Get-Asn1LengthOctets.ps1
-. $ModuleRoot\Functions\Get-CertificateHash.ps1
+. $ModuleRoot\Functions\Get-Hash.ps1
 . $ModuleRoot\Functions\New-AiaExtension.ps1
 . $ModuleRoot\Functions\New-CdpExtension.ps1
 . $ModuleRoot\Functions\New-SidExtension.ps1

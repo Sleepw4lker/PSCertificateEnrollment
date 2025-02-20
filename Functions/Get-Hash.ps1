@@ -11,9 +11,9 @@
     The Algorithm used to calculate the Hash Value.
 
     .OUTPUTS
-    The calculated Hash Value as a String.
+    The calculated Hash Value as a Hex String.
 #>
-function Get-CertificateHash {
+function Get-Hash {
 
     [cmdletbinding()]
     param(
@@ -27,19 +27,10 @@ function Get-CertificateHash {
         $HashAlgorithm = "SHA1"
     )
 
-    begin {}
+    # https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.hashalgorithm
+    $AlgorithmObject = [System.Security.Cryptography.HashAlgorithm]::Create($HashAlgorithm)
 
-    process {
+    $HashBytes = $AlgorithmObject.ComputeHash($Bytes)
 
-        # https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.hashalgorithm
-        $AlgorithmObject = [System.Security.Cryptography.HashAlgorithm]::Create($HashAlgorithm)
-
-        $HashBytes = $AlgorithmObject.ComputeHash($Bytes)
-
-        return [System.BitConverter]::ToString($HashBytes).Replace("-", [String]::Empty);
-
-    }
-
-    end {}
-
+    return [System.BitConverter]::ToString($HashBytes).Replace("-", [String]::Empty)
 }

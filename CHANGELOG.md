@@ -2,7 +2,12 @@
 
 ## 1.0.11 (tbd)
 
+- New `New-EnrollmentPolicy`, `Get-EnrollmentPolicy` and `Remove-EnrollmentPolicy` Commandlets allow managing Enrollment Policies on Windows Clients to be used with MS-XCEP and MS-WSTEP.
+- `Clear-XCEPEnrollmentPolicyCache` has been renamed to `Clear-EnrollmentPolicyCache`, but an Alias has been kept.
 - `New-CertificateRequest` now supports a `-CertificateTemplate` argument which allows sppecifying the Object Identifier of a certificate template and build the V2 Certificate Template extension out of it and add it to the Certificate Request. This allows specifying the certificate template when requesting for certificates over MS-WCCE or MS-WSTEP.
+- `Get-CertificateHash` has been renamed to `Get-Hash`.
+- `Get-ESTCertificate` now uses a PSCredential instead of a plaintext password.
+- `Get-RemoteDesktopCertificate` and `Set-RemoteDesktopCertificate` have been fixed to work with PowerShell Core.
 
 ## 1.0.10 (Feb 11, 2025)
 
@@ -97,4 +102,4 @@
   - Signing certificates do not raise an error any more.
   - Enhanced the verification routine if the specified Key Storage Provider actually exists.
   - Added the alias "Exportable" for the "PrivateKeyExportable" argument.
-  - Moved calculation of the MD5 hash for the root certification authority certificate from .NET method X509Certificate2.GetCertHash to own function `Get-CertificateHash` to ensure compatbility with .NET versions below 4.7.
+  - Moved calculation of the MD5 hash for the root certification authority certificate from .NET method X509Certificate2.GetCertHash to own function `Get-Hash` to ensure compatbility with .NET versions below 4.7.

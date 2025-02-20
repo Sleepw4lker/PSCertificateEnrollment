@@ -21,8 +21,6 @@ Function Get-ESTCACertificates {
         
         # This hides the Status Indicators of the Invoke-WebRequest Calls later on
         $ProgressPreference = 'SilentlyContinue'
-
-        Add-Type -AssemblyName System.Security
     }
 
     process {

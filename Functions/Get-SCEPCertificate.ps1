@@ -92,7 +92,7 @@ Function Get-SCEPCertificate {
             Mandatory=$False
             )]
         [Switch]
-        $MachineContext = $False,
+        $MachineContext,
 
         [Parameter(
             ParameterSetName="NewRequest",
@@ -216,8 +216,6 @@ Function Get-SCEPCertificate {
 
         # This hides the Status Indicators of the Invoke-WebRequest Calls later on
         $ProgressPreference = 'SilentlyContinue'
-
-        Add-Type -AssemblyName System.Security
 
         # Assembling the Configuration String, which is the SCEP URL in this Case
         If ($UseSSL)
@@ -492,7 +490,7 @@ Function Get-SCEPCertificate {
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-initialize
             $SCEPEnrollmentInterface.Initialize(
                 $CertificateRequestPkcs10,
-                (Get-CertificateHash -Bytes $RootCaCert.RawData -HashAlgorithm "MD5"),
+                (Get-Hash -Bytes $RootCaCert.RawData -HashAlgorithm "MD5"),
                 $EncodingType.XCN_CRYPT_STRING_HEX,
                 [Convert]::ToBase64String($GetCACert),
                 $EncodingType.XCN_CRYPT_STRING_BASE64

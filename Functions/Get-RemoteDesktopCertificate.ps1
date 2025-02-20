@@ -10,15 +10,11 @@ function Get-RemoteDesktopCertificate {
     [CmdletBinding()]
     param()
 
-    begin {}
-
     process {
 
-        $Thumbprint = (Get-WmiObject `
-                -Class "Win32_TSGeneralSetting" `
-                -Namespace root\cimv2\terminalservices `
-                -Filter "TerminalName='RDP-tcp'"
-            ).SSLCertificateSHA1Hash
+        $Thumbprint = (Get-CimInstance `
+            -ClassName "Win32_TSGeneralSetting" `
+            -Namespace root\cimv2\terminalservices -Filter "TerminalName='RDP-tcp'").SSLCertificateSHA1Hash
 
         # If no Certificate is set, we get "0000000000000000000000000000000000000000" returned
         If ($Thumbprint -ne '0000000000000000000000000000000000000000') {
@@ -34,7 +30,4 @@ function Get-RemoteDesktopCertificate {
 
         }
     }
-
-    end {}
-
 }

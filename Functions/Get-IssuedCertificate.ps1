@@ -57,7 +57,7 @@ Function Get-IssuedCertificate {
         [Alias("Machine")]
         [Parameter(Mandatory=$False)]
         [Switch]
-        $MachineContext = $False,
+        $MachineContext,
 
         [Alias("Config")]
         [Parameter(Mandatory=$True)]

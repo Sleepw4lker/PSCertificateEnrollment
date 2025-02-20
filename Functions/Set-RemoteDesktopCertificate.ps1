@@ -44,14 +44,12 @@ function Set-RemoteDesktopCertificate {
 
         Try {
 
-            $TerminalServicesConfig = Get-WmiObject `
-                -Class "Win32_TSGeneralSetting" `
+            $TerminalServicesConfig = Get-CimInstance `
+                -ClassName "Win32_TSGeneralSetting" `
                 -Namespace root\cimv2\terminalservices `
                 -Filter "TerminalName='RDP-tcp'"
 
-            [void] (Set-WMIInstance `
-                -Path $TerminalServicesConfig.__path `
-                -Argument @{SSLCertificateSHA1Hash="$($Certificate.Thumbprint)"})
+            [void](Set-CimInstance -CimInstance $TerminalServicesConfig -Property @{SSLCertificateSHA1Hash="$($Certificate.Thumbprint)"})
 
             return $True
 

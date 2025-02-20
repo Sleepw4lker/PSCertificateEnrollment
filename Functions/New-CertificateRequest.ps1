@@ -125,7 +125,7 @@ Function New-CertificateRequest {
         [Alias("Machine")]
         [Parameter(Mandatory=$False)]
         [Switch]
-        $MachineContext = $False,
+        $MachineContext,
 
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
@@ -990,6 +990,7 @@ Function New-CertificateRequest {
         $ApplicationPolicyOid,
         $CertificatePolicy,
         $TemplateExtension,
+        $TemplateOid,
         $SubjectAlternativeNamesExtension,
         $Sans,
         $AlternativeNameObject,
