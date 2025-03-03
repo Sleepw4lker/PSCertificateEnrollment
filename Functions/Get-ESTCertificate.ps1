@@ -116,7 +116,7 @@ Function Get-ESTCertificate {
             return
         }
 
-        $SimplePkiResponse = New-Object System.Security.Cryptography.Pkcs.SignedCms
+        $SimplePkiResponse = New-Object -TypeName Security.Cryptography.Pkcs.SignedCms
         $SimplePkiResponse.Decode([Convert]::Frombase64String([System.Text.Encoding]::ASCII.GetString($Response.Content).Replace("`n", [String]::Empty)))
         $SimplePkiResponse.Certificates
     }

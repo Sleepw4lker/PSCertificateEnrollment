@@ -27,7 +27,7 @@ function Set-RemoteDesktopCertificate {
                 ($_.EnhancedKeyUsageList.ObjectId -contains $Oid.XCN_OID_KP_RDC)
             )
         })]
-        [System.Security.Cryptography.X509Certificates.X509Certificate2]
+        [Security.Cryptography.X509Certificates.X509Certificate2]
         $Certificate
     )
 

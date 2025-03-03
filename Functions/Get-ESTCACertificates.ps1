@@ -50,7 +50,7 @@ Function Get-ESTCACertificates {
         PKI Response consists of a SignedData with no EncapsulatedContentInfo and no SignerInfo.
         #>
 
-        $SimplePkiResponse = New-Object System.Security.Cryptography.Pkcs.SignedCms
+        $SimplePkiResponse = New-Object -TypeName Security.Cryptography.Pkcs.SignedCms
         $SimplePkiResponse.Decode([Convert]::Frombase64String([System.Text.Encoding]::ASCII.GetString($Response.Content).Replace("`n", [String]::Empty)))
         $SimplePkiResponse.Certificates
     }

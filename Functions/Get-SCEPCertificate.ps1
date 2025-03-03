@@ -155,7 +155,7 @@ Function Get-SCEPCertificate {
             Mandatory=$False
             )]
         [ValidateScript({($_.HasPrivateKey) -and ($null -ne $_.PSParentPath)})]
-        [System.Security.Cryptography.X509Certificates.X509Certificate2]
+        [Security.Cryptography.X509Certificates.X509Certificate2]
         $SigningCert,
 
         [Alias("KeyStorageProvider")]
@@ -246,7 +246,7 @@ Function Get-SCEPCertificate {
             $GetCACert = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACert" -UseBasicParsing).Content
 
             # Decoding the CMS (PKCS#7 Message that was returned from the SCEP Server)
-            $Pkcs7CaCert = New-Object System.Security.Cryptography.Pkcs.SignedCms
+            $Pkcs7CaCert = New-Object -TypeName Security.Cryptography.Pkcs.SignedCms
             $Pkcs7CaCert.Decode($GetCACert)
         }
         Catch {
@@ -264,7 +264,7 @@ Function Get-SCEPCertificate {
 
         # Ensuring the Code will be executed on a supported Operating System
         # Operating Systems prior to Windows 8.1 don't contain the IX509SCEPEnrollment Interface
-        If ([int32](Get-WmiObject Win32_OperatingSystem).BuildNumber -lt $BUILD_NUMBER_WINDOWS_8_1) {
+        If ([int32](Get-CimInstance -ClassName Win32_OperatingSystem).BuildNumber -lt $BUILD_NUMBER_WINDOWS_8_1) {
             Write-Error -Message "This must be executed on Windows 8.1/Windows Server 2012 R2 or newer!"
             return 
         }
@@ -337,7 +337,7 @@ Function Get-SCEPCertificate {
             # We first create the Private Key
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509privatekey
             # Setting the Provider Attribute on the CertRequest Object afterwards seems not to work with Key Storage Providers...why?
-            $PrivateKey = New-Object -ComObject 'X509Enrollment.CX509PrivateKey'
+            $PrivateKey = New-Object -ComObject X509Enrollment.CX509PrivateKey
             
             $PrivateKey.ProviderName = $Ksp
 
@@ -346,7 +346,7 @@ Function Get-SCEPCertificate {
 
             If ($KeyAlgorithm -ne "RSA") {
 
-                $Algorithm = New-Object -ComObject 'X509Enrollment.CObjectId'
+                $Algorithm = New-Object -ComObject X509Enrollment.CObjectId
     
                 # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-iobjectid-initializefromalgorithmname
                 $Algorithm.InitializeFromAlgorithmName(
@@ -521,7 +521,7 @@ Function Get-SCEPCertificate {
         #>
         If ($SigningCert) {
 
-            $SignerCertificate = New-Object -ComObject 'X509Enrollment.CSignerCertificate'
+            $SignerCertificate = New-Object -ComObject X509Enrollment.CSignerCertificate
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-isignercertificate-initialize
             $SignerCertificate.Initialize(
@@ -593,7 +593,7 @@ Function Get-SCEPCertificate {
 
                     # The Failinfo Method is only present in Windows 10
                     # Windows 8.1 / 2012 R2 Users therefore won't get any fancy error message, sadly
-                    If ([int32](Get-WmiObject Win32_OperatingSystem).BuildNumber -ge $BUILD_NUMBER_WINDOWS_10) {
+                    If ([int32](Get-CimInstance -ClassName Win32_OperatingSystem).BuildNumber -ge $BUILD_NUMBER_WINDOWS_10) {
 
                         $FailInfo = ($SCEPFailInfo | Where-Object { $_.Code -eq $SCEPEnrollmentInterface.FailInfo() })
 
@@ -641,12 +641,8 @@ Function Get-SCEPCertificate {
 
                     # We load the Certificate into an X509Certificate2 Object
                     # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-get_certificate
-                    $CertificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-                    $CertificateObject.Import(
-                        [Convert]::FromBase64String(
-                            $SCEPEnrollmentInterface.Certificate($EncodingType.XCN_CRYPT_STRING_BASE64)
-                            )
-                        )
+                    $CertificateObject = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String(
+						$SCEPEnrollmentInterface.Certificate($EncodingType.XCN_CRYPT_STRING_BASE64)))
 
                     # Return the resulting Certificate
                     If ($MachineContext.IsPresent -or ($SigningCert -and ($SigningCert.PSParentPath -match "Machine"))) {

@@ -34,7 +34,7 @@ function New-SignedCertificateRequest {
 
         [Parameter(Mandatory=$True)]
         [ValidateScript({($_.HasPrivateKey) -and ($null -ne $_.PSParentPath)})]
-        [System.Security.Cryptography.X509Certificates.X509Certificate2]
+        [Security.Cryptography.X509Certificates.X509Certificate2]
         $SigningCert,
 
         [Alias("Hash")]
@@ -53,8 +53,8 @@ function New-SignedCertificateRequest {
     begin {
         # Signing a Certificate Request means wrapping the PKCS10 request inside a PKCS7 request
         # https://docs.microsoft.com/en-us/windows/desktop/seccertenroll/certificate-request-functions
-        $CertRequestPkcs10 = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestPkcs10'
-        $CertRequestPkcs7 = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestPkcs7'
+        $CertRequestPkcs10 = New-Object -ComObject X509Enrollment.CX509CertificateRequestPkcs10
+        $CertRequestPkcs7 = New-Object -ComObject X509Enrollment.CX509CertificateRequestPkcs7
     }
 
     process {
@@ -78,7 +78,7 @@ function New-SignedCertificateRequest {
 
         # Create a Signer Certificate Structure
         # https://msdn.microsoft.com/en-us/library/windows/desktop/aa376832(v=vs.85).aspx
-        $SignerCertificate =  New-Object -ComObject 'X509Enrollment.CSignerCertificate'
+        $SignerCertificate =  New-Object -ComObject X509Enrollment.CSignerCertificate
         $SignerCertificate.Initialize(
             [int]($SigningCert.PSParentPath -match "Machine"),
             $X509PrivateKeyVerify.VerifyNone, # We did this already during Parameter Validation

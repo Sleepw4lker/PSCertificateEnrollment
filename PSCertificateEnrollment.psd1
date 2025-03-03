@@ -16,7 +16,7 @@
 
     # Supported PSEditions.
     # https://docs.microsoft.com/en-us/powershell/scripting/gallery/concepts/module-psedition-support
-    CompatiblePSEditions = @('Desktop')
+    CompatiblePSEditions = @("Desktop", "Core")
 
     # ID used to uniquely identify this module
     GUID = '74768cbe-add9-4b55-b060-a9461a16e98d'

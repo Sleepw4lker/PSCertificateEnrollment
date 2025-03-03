@@ -12,7 +12,7 @@ Function Get-KeyStorageProvider {
 
     begin {
         # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-icspinformations
-        $KspList = New-Object -ComObject 'X509Enrollment.CCspInformations'
+        $KspList = New-Object -ComObject X509Enrollment.CCspInformations
     }
 
     process {

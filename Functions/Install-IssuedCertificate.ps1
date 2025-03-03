@@ -30,7 +30,7 @@ Function Install-IssuedCertificate {
             ValuefromPipeline = $True
             )]
         [ValidateNotNullorEmpty()]
-        [System.Security.Cryptography.X509Certificates.X509Certificate2]
+        [Security.Cryptography.X509Certificates.X509Certificate2]
         $Certificate,
 
         [Parameter(
@@ -81,8 +81,7 @@ Function Install-IssuedCertificate {
         If ($Path) {
 
             Try { 
-                $Certificate = New-Object Security.Cryptography.X509Certificates.X509Certificate2
-                $Certificate.Import((Get-ChildItem -Path $Path).FullName) # This is to ensure the Path is always fully qualified
+                $Certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new((Get-ChildItem -Path $Path).FullName)
             }
             Catch {
                 Write-Error -Message $PSItem.Exception.Message

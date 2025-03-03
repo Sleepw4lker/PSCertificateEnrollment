@@ -279,12 +279,9 @@ Function Get-IssuedCertificate {
 
                 # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-getcertificate
                 # https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate2.import
-                $CertificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-                $CertificateObject.Import(
-                    [Convert]::FromBase64String(
-                        $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64)
-                    )
-                )
+                $CertificateObject = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String(
+                    $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64)
+                ))
 
                 [PSCustomObject]@{
                     RequestId = $CertRequest.GetRequestId()

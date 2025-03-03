@@ -7,7 +7,7 @@
 - `New-CertificateRequest` now supports a `-CertificateTemplate` argument which allows sppecifying the Object Identifier of a certificate template and build the V2 Certificate Template extension out of it and add it to the Certificate Request. This allows specifying the certificate template when requesting for certificates over MS-WCCE or MS-WSTEP.
 - `Get-CertificateHash` has been renamed to `Get-Hash`.
 - `Get-ESTCertificate` now uses a PSCredential instead of a plaintext password.
-- `Get-RemoteDesktopCertificate` and `Set-RemoteDesktopCertificate` have been fixed to work with PowerShell Core.
+- Code base has been fixed to properly work with PowerShell Core.
 
 ## 1.0.10 (Feb 11, 2025)
 

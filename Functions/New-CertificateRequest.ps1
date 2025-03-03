@@ -305,7 +305,7 @@ Function New-CertificateRequest {
 
         [Parameter(Mandatory=$False)]
         [ValidateScript({($_.HasPrivateKey) -and ($null -ne $_.PSParentPath)})]
-        [System.Security.Cryptography.X509Certificates.X509Certificate2]
+        [Security.Cryptography.X509Certificates.X509Certificate2]
         $SigningCert,
 
         [Parameter(Mandatory=$False)]
@@ -392,7 +392,7 @@ Function New-CertificateRequest {
     process {
 
         # Ensuring the Code will be executed on a supported Operating System
-        If ([int32](Get-WmiObject Win32_OperatingSystem).BuildNumber -lt $BUILD_NUMBER_WINDOWS_7) {
+        If ([int32](Get-CimInstance -ClassName Win32_OperatingSystem).BuildNumber -lt $BUILD_NUMBER_WINDOWS_7) {
             Write-Error -Message "This must be executed on Windows 7/Windows Server 2008 R2 or newer!"
             return 
         }
@@ -416,7 +416,7 @@ Function New-CertificateRequest {
         # We first create the Private Key
         # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509privatekey
         # Setting the Provider Attribute on the CertRequest Object afterwards seems not to work with Key Storage Providers...why?
-        $PrivateKey = New-Object -ComObject 'X509Enrollment.CX509PrivateKey'
+        $PrivateKey = New-Object -ComObject X509Enrollment.CX509PrivateKey
         
         $PrivateKey.ProviderName = $Ksp
 
@@ -455,7 +455,7 @@ Function New-CertificateRequest {
 
         If ($KeyAlgorithm -ne "RSA") {
 
-            $Algorithm = New-Object -ComObject 'X509Enrollment.CObjectId'
+            $Algorithm = New-Object -ComObject X509Enrollment.CObjectId
 
             # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-iobjectid-initializefromalgorithmname
             $Algorithm.InitializeFromAlgorithmName(
@@ -490,11 +490,12 @@ Function New-CertificateRequest {
         # https://docs.microsoft.com/en-us/windows/desktop/seccertenroll/certificate-request-functions
         If (($SelfSign.IsPresent) -or ($SigningCert)) {
             # Enables you to create a certificate directly without applying to a certification authority (CA).
-            $CertificateRequestPkcs10 = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestCertificate'
+            $CertificateRequestPkcs10 = New-Object -ComObject X509Enrollment.CX509CertificateRequestCertificate
         }
         Else {
-            # Represents a PKCS #10 certificate request. A PKCS #10 request can be sent directly to a CA, or it can be wrapped by a PKCS #7 or CMC request.
-            $CertificateRequestPkcs10 = New-Object -ComObject 'X509Enrollment.CX509CertificateRequestPkcs10'
+            # Represents a PKCS #10 certificate request. A PKCS #10 request can be sent directly to a CA, 
+            # or it can be wrapped by a PKCS #7 or CMC request.
+            $CertificateRequestPkcs10 = New-Object -ComObject X509Enrollment.CX509CertificateRequestPkcs10
         }
 
         $CertificateRequestPkcs10.InitializeFromPrivateKey(
@@ -543,7 +544,7 @@ Function New-CertificateRequest {
         If ($SigningCert) {
 
             # https://msdn.microsoft.com/en-us/library/windows/desktop/aa376832(v=vs.85).aspx
-            $SignerCertificate =  New-Object -ComObject 'X509Enrollment.CSignerCertificate'
+            $SignerCertificate =  New-Object -ComObject X509Enrollment.CSignerCertificate
             $SignerCertificate.Initialize(
                 [int]($SigningCert.PSParentPath -match "Machine"),
                 $X509PrivateKeyVerify.VerifyNone, # We did this already during Parameter Validation
@@ -553,7 +554,7 @@ Function New-CertificateRequest {
             $CertificateRequestPkcs10.SignerCertificate = $SignerCertificate
 
             # If we have a Signing Certificate, we copy its Subject to the Target Certificates Issuer
-            $IssuerDnObject = New-Object -ComObject 'X509Enrollment.CX500DistinguishedName'
+            $IssuerDnObject = New-Object -ComObject X509Enrollment.CX500DistinguishedName
 
             # We must have the DN encoded as printableString instead of UTF-8, otherwise CRL verification will fail
             # During certificate chain validation (from the end entity to a trusted root) the KeyId is used to create 
@@ -942,7 +943,7 @@ Function New-CertificateRequest {
 
         # Building the Certificate Request
         # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509enrollment
-        $EnrollmentObject = New-Object -ComObject 'X509Enrollment.CX509Enrollment'
+        $EnrollmentObject = New-Object -ComObject X509Enrollment.CX509Enrollment
         $EnrollmentObject.InitializeFromRequest($CertificateRequestPkcs10)
         $CertificateRequest = $EnrollmentObject.CreateRequest($EncodingType.XCN_CRYPT_STRING_BASE64REQUESTHEADER)
 
@@ -958,8 +959,8 @@ Function New-CertificateRequest {
             )
 
             # We load the Certificate into an X509Certificate2 Object so that we can call Certificate Properties
-            $CertificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-            $CertificateObject.Import([Convert]::FromBase64String($EnrollmentObject.Certificate()))
+            $CertificateObject = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
+                [Convert]::FromBase64String($EnrollmentObject.Certificate()))
             
             # Return the resulting Certificate
             If ($MachineContext.IsPresent) {
