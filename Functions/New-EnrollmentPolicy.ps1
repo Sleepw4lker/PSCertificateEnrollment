@@ -95,6 +95,6 @@ function New-EnrollmentPolicy {
         Set-ItemProperty -Path "$RegistryRoot\$Identifier" -Name "AuthFlags" -Type DWord -Value $Authflags -Force -ErrorAction SilentlyContinue | Out-Null
         Set-ItemProperty -Path "$RegistryRoot\$Identifier" -Name "Cost" -Type DWord -Value 0x7ffffffd -Force -ErrorAction SilentlyContinue | Out-Null
 
-        Get-EnrollmentPolicy -Identifier $Identifier -MachineContext $MachineContext.IsPresent
+        Get-EnrollmentPolicy -Identifier $Identifier -MachineContext:$MachineContext.IsPresent
     }
 }
