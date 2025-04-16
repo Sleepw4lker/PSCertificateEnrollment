@@ -435,6 +435,8 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Remove-EnrollmentPolicy.ps1
 . $ModuleRoot\Functions\Clear-EnrollmentPolicyCache.ps1
 . $ModuleRoot\Functions\Get-WSTEPResponse.ps1
+. $ModuleRoot\Functions\Grant-PrivateKeyPermission.ps1
+. $ModuleRoot\Functions\Get-PGWYCertificate.ps1
 
 # Import Private Functions
 . $ModuleRoot\Functions\Convert-DERToBASE64.ps1
@@ -446,3 +448,8 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\New-AiaExtension.ps1
 . $ModuleRoot\Functions\New-CdpExtension.ps1
 . $ModuleRoot\Functions\New-SidExtension.ps1
+. $ModuleRoot\Functions\Invoke-PGWYPKCS10Operation.ps1
+. $ModuleRoot\Functions\Get-CertificateByThumbprint.ps1
+. $ModuleRoot\Functions\ConvertFrom-Base64ToPem.ps1
+. $ModuleRoot\Functions\ConvertFrom-PemToBase64.ps1
+. $ModuleRoot\Functions\New-SignedCms.ps1

@@ -32,7 +32,7 @@ Function Get-ESTCertificate {
     begin {
         
         # This hides the Status Indicators of the Invoke-WebRequest Calls later on
-        $ProgressPreference = 'SilentlyContinue'
+        $ProgressPreference = "SilentlyContinue"
     }
 
     process {

@@ -57,7 +57,7 @@ Function Get-NDESOTP {
     begin {
 
         # This hides the Status Indicators of the Invoke-WebRequest Calls later on
-        $ProgressPreference = 'SilentlyContinue'
+        $ProgressPreference = "SilentlyContinue"
 
         If ($NoSSL) { 
             Write-Warning "Not using SSL. Authentication Credentials will be sent in Cleartext!"

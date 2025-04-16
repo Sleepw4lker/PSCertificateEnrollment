@@ -215,7 +215,7 @@ Function Get-SCEPCertificate {
     begin  {
 
         # This hides the Status Indicators of the Invoke-WebRequest Calls later on
-        $ProgressPreference = 'SilentlyContinue'
+        $ProgressPreference = "SilentlyContinue"
 
         # Assembling the Configuration String, which is the SCEP URL in this Case
         If ($UseSSL)

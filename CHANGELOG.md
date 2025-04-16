@@ -2,7 +2,9 @@
 
 ## 1.0.11 (tbd)
 
+- New `Get-PGWYCertificate` Commandlet allows requesting certificates from [Nexus SmartID Certificate Manager](https://doc.nexusgroup.com/pub/certificate-manager-overview) and [Nexus Go](https://www.nexusgroup.com/solutions/online-services/) instances via the [Certificate Manager (CM) REST API](https://doc.nexusgroup.com/pub/certificate-manager-cm-rest-api).
 - New `New-EnrollmentPolicy`, `Get-EnrollmentPolicy` and `Remove-EnrollmentPolicy` Commandlets allow managing Enrollment Policies on Windows Clients to be used with MS-XCEP and MS-WSTEP.
+- New `Grant-PrivateKeyPermission` Commandlet allows setting private Key permissions. 
 - `Clear-XCEPEnrollmentPolicyCache` has been renamed to `Clear-EnrollmentPolicyCache`, but an Alias has been kept.
 - `New-CertificateRequest` now supports a `-CertificateTemplate` argument which allows sppecifying the Object Identifier of a certificate template and build the V2 Certificate Template extension out of it and add it to the Certificate Request. This allows specifying the certificate template when requesting for certificates over MS-WCCE or MS-WSTEP.
 - `Get-CertificateHash` has been renamed to `Get-Hash`.
