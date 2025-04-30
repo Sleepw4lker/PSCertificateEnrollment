@@ -232,7 +232,7 @@ Function Get-SCEPCertificate {
 
  	if ($Suffix) {
   	    $ConfigString = $ConfigString + "/" + $Suffix
-
+	}
         Write-Verbose -Message "Configuration String: $ConfigString"
 
         # SCEP GetCACaps Operation
