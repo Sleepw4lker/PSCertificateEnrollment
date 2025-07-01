@@ -1,6 +1,6 @@
 ﻿# Changelog for the PSCertificateEnrollment PowerShell Module
 
-## 1.0.11 (tbd)
+## 1.0.11 (Jul 01, 2025)
 
 - New `Get-PGWYCertificate` Commandlet allows requesting certificates from [Nexus SmartID Certificate Manager](https://doc.nexusgroup.com/pub/certificate-manager-overview) and [Nexus Go](https://www.nexusgroup.com/solutions/online-services/) instances via the [Certificate Manager (CM) REST API](https://doc.nexusgroup.com/pub/certificate-manager-cm-rest-api).
 - New `New-EnrollmentPolicy`, `Get-EnrollmentPolicy` and `Remove-EnrollmentPolicy` Commandlets allow managing Enrollment Policies on Windows Clients to be used with MS-XCEP and MS-WSTEP.

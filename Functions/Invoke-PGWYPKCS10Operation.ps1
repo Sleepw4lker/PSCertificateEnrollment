@@ -59,6 +59,7 @@ function Invoke-PGWYPKCS10Operation {
         Method = "POST"
         Body = ($Body -join "`r`n")
         Certificate = $ClientCertificate
+        UseBasicParsing = $True
     }
 
     return Invoke-WebRequest @Arguments
