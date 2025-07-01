@@ -207,9 +207,9 @@ Function Get-SCEPCertificate {
         $Method = "POST",
 
         [Parameter(Mandatory=$False)]
-        [ValidateNotNullOrEmpty()]
+        [ValidateNotNull()]
         [String]
-        $Suffix = "certsrv/mscep/mscep.dll"
+        $Suffix = "certsrv/mscep/mscep.dll/pkiclient.exe"
     )
 
     begin  {
@@ -228,8 +228,11 @@ Function Get-SCEPCertificate {
         Else
             { $PortString = [String]::Empty }
 
-        $ConfigString = "$($Protocol)://$($ComputerName)$($PortString)/$($Suffix)/pkiclient.exe"
+        $ConfigString = "$($Protocol)://$($ComputerName)$($PortString)"
 
+ 	if ($Suffix) {
+  	    $ConfigString = $ConfigString + "/" + $Suffix
+	}
         Write-Verbose -Message "Configuration String: $ConfigString"
 
         # SCEP GetCACaps Operation
