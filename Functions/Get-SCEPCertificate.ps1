@@ -397,65 +397,12 @@ Function Get-SCEPCertificate {
             # Set the Subject Alternative Names Extension if specified as Argument
             If ($Upn -or $Email -or $Dns -or $IP) {
 
-                $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
-                $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
-        
-                # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
-
-                Foreach ($Entry in $Upn) {
-
-                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                    $AlternativeNameObject.InitializeFromString(
-                        $AlternativeNameType.XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME, 
-                        $Entry
-                    )
-                    $Sans.Add($AlternativeNameObject)
-                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
-    
-                }
-
-                Foreach ($Entry in $Email) {
-            
-                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                    $AlternativeNameObject.InitializeFromString(
-                        $AlternativeNameType.XCN_CERT_ALT_NAME_RFC822_NAME, 
-                        $Entry
-                    )
-                    $Sans.Add($AlternativeNameObject)
-                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
-    
-                }
-    
-                Foreach ($Entry in $Dns) {
-
-                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                    $AlternativeNameObject.InitializeFromString(
-                        $AlternativeNameType.XCN_CERT_ALT_NAME_DNS_NAME,
-                        $Entry
-                    )
-                    $Sans.Add($AlternativeNameObject)
-                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
-    
-                }
-
-                Foreach ($Entry in $IP) {
-
-                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                    $AlternativeNameObject.InitializeFromRawData(
-                        $AlternativeNameType.XCN_CERT_ALT_NAME_IP_ADDRESS,
-                        $EncodingType.XCN_CRYPT_STRING_BASE64,
-                        [Convert]::ToBase64String($Entry.GetAddressBytes())
-                    )
-                    $Sans.Add($AlternativeNameObject)
-                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
-    
-                }
-                
-                $SubjectAlternativeNamesExtension.Critical = $True
-                $SubjectAlternativeNamesExtension.InitializeEncode($Sans)
+                $SubjectAlternativeNamesExtension = New-SanExtension -Upn $Upn -Email $Email -Dns $Dns -IP $IP
         
                 # Adding the Extension to the Certificate
-                $CertificateRequestPkcs10.X509Extensions.Add($SubjectAlternativeNamesExtension)
+                If ($null -ne $SubjectAlternativeNamesExtension) {
+                    $CertificateRequestPkcs10.X509Extensions.Add($SubjectAlternativeNamesExtension)
+                }
         
             }
 
