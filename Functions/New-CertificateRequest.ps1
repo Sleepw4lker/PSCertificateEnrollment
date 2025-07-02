@@ -724,78 +724,110 @@ Function New-CertificateRequest {
         # Set the Subject Alternative Names Extension if specified as Argument
         If ($Upn -or $Email -or $Dns -or $IP -or $Uri) {
 
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionalternativenames
-            $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
-            $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
+            # Use the shared function for common SAN types (UPN, Email, DNS, IP)
+            $SubjectAlternativeNamesExtension = New-SanExtension -Upn $Upn -Email $Email -Dns $Dns -IP $IP
 
-            # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
+            # If we only have URI SANs, create extension manually
+            If ($null -eq $SubjectAlternativeNamesExtension -and $Uri) {
+                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionalternativenames
+                $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
+                $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
 
-            Foreach ($Entry in $Upn) {
-            
-                $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                $AlternativeNameObject.InitializeFromString(
-                    $AlternativeNameType.XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME, 
-                    $Entry
-                )
-                $Sans.Add($AlternativeNameObject)
-                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+                Foreach ($Entry in $Uri) {
+                
+                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                    $AlternativeNameObject.InitializeFromString(
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_URL,
+                        $Entry.ToString()
+                    )
+                    $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
 
+                }
+                
+                $SubjectAlternativeNamesExtension.Critical = $True
+                $SubjectAlternativeNamesExtension.InitializeEncode($Sans)
             }
+            # If we have both common SANs and URI SANs, we need to combine them
+            ElseIf ($null -ne $SubjectAlternativeNamesExtension -and $Uri) {
+                # For now, fall back to the original inline logic to avoid complexity
+                # This preserves existing behavior while still extracting the most common case
+                
+                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionalternativenames
+                $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
+                $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
 
-            Foreach ($Entry in $Email) {
-            
-                $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                $AlternativeNameObject.InitializeFromString(
-                    $AlternativeNameType.XCN_CERT_ALT_NAME_RFC822_NAME, 
-                    $Entry
-                )
-                $Sans.Add($AlternativeNameObject)
-                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+                # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
 
+                Foreach ($Entry in $Upn) {
+                
+                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                    $AlternativeNameObject.InitializeFromString(
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME, 
+                        $Entry
+                    )
+                    $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+
+                }
+
+                Foreach ($Entry in $Email) {
+                
+                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                    $AlternativeNameObject.InitializeFromString(
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_RFC822_NAME, 
+                        $Entry
+                    )
+                    $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+
+                }
+
+                Foreach ($Entry in $Dns) {
+                
+                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                    $AlternativeNameObject.InitializeFromString(
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_DNS_NAME,
+                        $Entry
+                    )
+                    $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+
+                }
+
+                Foreach ($Entry in $Uri) {
+                
+                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                    $AlternativeNameObject.InitializeFromString(
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_URL,
+                        $Entry.ToString()
+                    )
+                    $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+
+                }
+
+                Foreach ($Entry in $IP) {
+
+                    $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
+                    $AlternativeNameObject.InitializeFromRawData(
+                        $AlternativeNameType.XCN_CERT_ALT_NAME_IP_ADDRESS,
+                        $EncodingType.XCN_CRYPT_STRING_BASE64,
+                        [Convert]::ToBase64String($Entry.GetAddressBytes())
+                    )
+                    $Sans.Add($AlternativeNameObject)
+                    [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
+
+                }
+                
+                $SubjectAlternativeNamesExtension.Critical = $True
+                $SubjectAlternativeNamesExtension.InitializeEncode($Sans)
             }
-
-            Foreach ($Entry in $Dns) {
-            
-                $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                $AlternativeNameObject.InitializeFromString(
-                    $AlternativeNameType.XCN_CERT_ALT_NAME_DNS_NAME,
-                    $Entry
-                )
-                $Sans.Add($AlternativeNameObject)
-                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
-
-            }
-
-            Foreach ($Entry in $Uri) {
-            
-                $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                $AlternativeNameObject.InitializeFromString(
-                    $AlternativeNameType.XCN_CERT_ALT_NAME_URL,
-                    $Entry.ToString()
-                )
-                $Sans.Add($AlternativeNameObject)
-                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
-
-            }
-
-            Foreach ($Entry in $IP) {
-
-                $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
-                $AlternativeNameObject.InitializeFromRawData(
-                    $AlternativeNameType.XCN_CERT_ALT_NAME_IP_ADDRESS,
-                    $EncodingType.XCN_CRYPT_STRING_BASE64,
-                    [Convert]::ToBase64String($Entry.GetAddressBytes())
-                )
-                $Sans.Add($AlternativeNameObject)
-                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($AlternativeNameObject))
-
-            }
-            
-            $SubjectAlternativeNamesExtension.Critical = $True
-            $SubjectAlternativeNamesExtension.InitializeEncode($Sans)
 
             # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($SubjectAlternativeNamesExtension)
+            If ($null -ne $SubjectAlternativeNamesExtension) {
+                $CertificateRequestPkcs10.X509Extensions.Add($SubjectAlternativeNamesExtension)
+            }
 
         }
 

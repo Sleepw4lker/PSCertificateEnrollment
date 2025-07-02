@@ -447,6 +447,7 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\Get-Hash.ps1
 . $ModuleRoot\Functions\New-AiaExtension.ps1
 . $ModuleRoot\Functions\New-CdpExtension.ps1
+. $ModuleRoot\Functions\New-SanExtension.ps1
 . $ModuleRoot\Functions\New-SidExtension.ps1
 . $ModuleRoot\Functions\Invoke-PGWYPKCS10Operation.ps1
 . $ModuleRoot\Functions\Get-CertificateByThumbprint.ps1
