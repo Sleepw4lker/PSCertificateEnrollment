@@ -25,8 +25,10 @@ Function Get-ESTCertificate {
         [System.Management.Automation.PSCredential]
         $Credential,
 
-        [Switch]
-        $Reenroll
+        [Parameter(Mandatory=$False)]
+        [ValidateScript({($_.HasPrivateKey) -and ($null -ne $_.PSParentPath)})]
+        [Security.Cryptography.X509Certificates.X509Certificate2]
+        $RenewalCertificate
     )
 
     begin {
@@ -36,6 +38,42 @@ Function Get-ESTCertificate {
     }
 
     process {
+
+        <#
+        RFC 7030 4.2.1
+        When HTTPS POSTing to /simpleenroll, the client MUST include a Simple PKI Request as specified in CMC [RFC5272], Section 3.1 (i.e., a PKCS#10 Certification Request [RFC2986]).
+        The HTTP content-type of "application/pkcs10" is used here. The format of the message is as specified in [RFC5967] with a Content-Transfer-Encoding of "base64" [RFC2045].
+        #>
+
+        $Headers = @{
+            "Content-Type" = "application/pkcs10"
+            "Content-Transfer-Encoding" = "base64"
+        }
+
+        if ($Credential -and (-not $RenewalCertificate)) {
+
+            <#
+            RFC 7030 3.2.3
+            A client MAY set the username to the empty string ("") if it is presenting a password that is not associated with a username.
+            #>
+
+            $Username = $Credential.UserName
+            $Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+            )
+
+            $EncodedCredentials = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$($Username):$($Password)"))
+
+            $Headers.Add("Authorization", "Basic $EncodedCredentials")
+
+        }
+
+        $Arguments = @{
+            UseBasicParsing = $True
+            Method = "POST"
+            Headers = $Headers
+            Body = (ConvertFrom-PemToBase64 -String $CertificateRequest)
+        }
 
         <#
         RFC 7030 4.2
@@ -56,43 +94,15 @@ Function Get-ESTCertificate {
         as specified in Section 3.6.
         #>
 
-        if ($Reenroll.IsPresent) {
-            $Operation = "simplereenroll"
+        if ($RenewalCertificate) {
+            $Arguments.Add("Uri", "https://${ComputerName}:${Port}/${Suffix}/simplereenroll")
+            $Arguments.Add("Certificate", $RenewalCertificate)
         }
         else {
-            $Operation = "simpleenroll"
+            $Arguments.Add("Uri", "https://${ComputerName}:${Port}/${Suffix}/simpleenroll")
         }
 
-        <#
-        RFC 7030 4.2.1
-        When HTTPS POSTing to /simpleenroll, the client MUST include a Simple PKI Request as specified in CMC [RFC5272], Section 3.1 (i.e., a PKCS#10 Certification Request [RFC2986]).
-        The HTTP content-type of "application/pkcs10" is used here. The format of the message is as specified in [RFC5967] with a Content-Transfer-Encoding of "base64" [RFC2045].
-        #>
-
-        $Headers = @{
-            "Content-Type" = "application/pkcs10"
-            "Content-Transfer-Encoding" = "base64"
-        }
-
-        if ($Password) {
-
-            <#
-            RFC 7030 3.2.3
-            A client MAY set the username to the empty string ("") if it is presenting a password that is not associated with a username.
-            #>
-
-            $Username = $Credential.UserName,
-            $Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
-            )
-
-            $EncodedCredentials = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$($Username):$($Password)"))
-
-            $Headers.Add("Authorization", "Basic $EncodedCredentials")
-
-        }
-
-        $Response = Invoke-WebRequest -Method POST -Uri "https://${ComputerName}:${Port}/${Suffix}/${Operation}" -Headers $Headers -Body $CertificateRequest -UseBasicParsing
+        $Response = Invoke-WebRequest @Arguments
 
         <#
         RFC 7030 4.2.3
