@@ -209,7 +209,12 @@ Function Get-SCEPCertificate {
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $Suffix = "certsrv/mscep/mscep.dll"
+        $Suffix = "certsrv/mscep/mscep.dll",
+
+        [Parameter(Mandatory=$False)]
+        [ValidateScript({$_.Subject -eq $_.Issuer})]
+        [System.Security.Cryptography.X509Certificates.X509Certificate]
+        $RootCaCert
     )
 
     begin  {
@@ -477,7 +482,15 @@ Function Get-SCEPCertificate {
             https://tools.ietf.org/html/rfc5280#section-6.1
             A certificate is self-issued if the same DN appears in the subject and issuer fields 
         #>
-        $RootCaCert = $Pkcs7CaCert.Certificates | Where-Object { $_.Subject -eq $_.Issuer }
+        if ($null -eq $RootCaCert) {
+            $RootCaCert = $Pkcs7CaCert.Certificates | Where-Object { $_.Subject -eq $_.Issuer }
+        }
+        else {
+            # This is a workaround for the case where the SCEP server doesnt provide the Root CA certificate. In this case we must fool the Microsoft API and inject the user-provided one.
+            $CertificateCollection = $Pkcs7CaCert.Certificates
+            [void]$CertificateCollection.Add([System.Security.Cryptography.X509Certificates.X509Certificate2]::New($RootCaCert.RawData))
+            $GetCACert = $CertificateCollection.Export(5)
+        }
 
         # Initialize the IX509SCEPEnrollment Interface
         # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509scepenrollment
