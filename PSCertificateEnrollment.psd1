@@ -12,10 +12,9 @@
     RootModule = 'PSCertificateEnrollment.psm1'
 
     # Version number of this module.
-    ModuleVersion = '1.0.11'
+    ModuleVersion = '1.0.12'
 
     # Supported PSEditions.
-    # https://docs.microsoft.com/en-us/powershell/scripting/gallery/concepts/module-psedition-support
     CompatiblePSEditions = @("Desktop", "Core")
 
     # ID used to uniquely identify this module
@@ -28,7 +27,7 @@
     CompanyName = 'Uwe Gradenegger'
 
     # Copyright statement for this module
-    Copyright = '(c) 2020-2025 Uwe Gradenegger. All rights reserved.'
+    Copyright = '(c) 2020-2026 Uwe Gradenegger. All rights reserved.'
 
     # Description of the functionality provided by this module
     Description = 'PowerShell Module for various PKI-related tasks.'

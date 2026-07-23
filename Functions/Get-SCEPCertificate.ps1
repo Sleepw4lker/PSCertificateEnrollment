@@ -175,7 +175,10 @@ Function Get-SCEPCertificate {
             "ECDSA_P521",
             "ECDH_P256",
             "ECDH_P384",
-            "ECDH_P521"
+            "ECDH_P521",
+            "ML-DSA:44",
+            "ML-DSA:65",
+            "ML-DSA:87"
             )]
         [String]
         $KeyAlgorithm = "RSA",
@@ -214,7 +217,18 @@ Function Get-SCEPCertificate {
         [Parameter(Mandatory=$False)]
         [ValidateScript({$_.Subject -eq $_.Issuer})]
         [System.Security.Cryptography.X509Certificates.X509Certificate]
-        $RootCaCert
+        $RootCaCert,
+
+        [ValidateSet(
+            "POSTPKIOperation",
+            "Renewal",
+            "SHA-512",
+            "SHA-256",
+            "SHA-1",
+            "AES",
+            "DES3")]
+        [String[]]
+        $CaCapabilites
     )
 
     begin  {
@@ -238,12 +252,17 @@ Function Get-SCEPCertificate {
         Write-Verbose -Message "Configuration String: $ConfigString"
 
         # SCEP GetCACaps Operation
-        Try {
-            $GetCACaps = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACaps" -UseBasicParsing).Content
+        if ($CaCapabilites) {
+            $GetCACaps = $CaCapabilites -join [Environment]::NewLine
         }
-        Catch {
-            Write-Error -Message $PSItem.Exception.Message
-            return
+        Else {
+            Try {
+                $GetCACaps = (Invoke-WebRequest -Uri "$($ConfigString)?operation=GetCACaps" -UseBasicParsing).Content
+            }
+            Catch {
+                Write-Error -Message $PSItem.Exception.Message
+                return
+            }
         }
 
         # SCEP GetCACert Operation
@@ -266,13 +285,6 @@ Function Get-SCEPCertificate {
         # Skip pipeline processing if the preparation steps failed
         If (-not $GetCACaps) { return }
         If (-not $Pkcs7CaCert.Certificates) { return }
-
-        # Ensuring the Code will be executed on a supported Operating System
-        # Operating Systems prior to Windows 8.1 don't contain the IX509SCEPEnrollment Interface
-        If ([int32](Get-CimInstance -ClassName Win32_OperatingSystem).BuildNumber -lt $BUILD_NUMBER_WINDOWS_8_1) {
-            Write-Error -Message "This must be executed on Windows 8.1/Windows Server 2012 R2 or newer!"
-            return 
-        }
 
         # Ensuring we work with Elevation when messing with the Computer Certificate Store
         # As we want to inherit Key Settings from the Signing Certificate, we must also check its Certificate Store
@@ -307,14 +319,12 @@ Function Get-SCEPCertificate {
                     $InheritOptions
                 )
 
-                
-                # Configuring the private Key of the Certificate
                 $CertificateRequestPkcs10.PrivateKey.Length = $KeyLength
                 $CertificateRequestPkcs10.PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
                 $CertificateRequestPkcs10.PrivateKey.ProviderName = $Ksp
 
                 <#
-                    https://tools.ietf.org/html/draft-nourse-scep-23#section-2.3
+                    RFC 8894
                     A client that is performing certificate renewal as per Appendix D
                     SHOULD send an empty challenge password (i.e. use the empty string as
                     the challenge password) but MAY send the originally distributed
@@ -338,14 +348,8 @@ Function Get-SCEPCertificate {
                 return
             }
 
-
-            # We first create the Private Key
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509privatekey
-            # Setting the Provider Attribute on the CertRequest Object afterwards seems not to work with Key Storage Providers...why?
             $PrivateKey = New-Object -ComObject X509Enrollment.CX509PrivateKey
-            
             $PrivateKey.ProviderName = $Ksp
-
             $PrivateKey.MachineContext = [int]($MachineContext.IsPresent)
             $PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
 
@@ -353,7 +357,6 @@ Function Get-SCEPCertificate {
 
                 $Algorithm = New-Object -ComObject X509Enrollment.CObjectId
     
-                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-iobjectid-initializefromalgorithmname
                 $Algorithm.InitializeFromAlgorithmName(
                     $ObjectIdGroupId.XCN_CRYPT_PUBKEY_ALG_OID_GROUP_ID,
                     $ObjectIdPublicKeyFlags.XCN_CRYPT_OID_INFO_PUBKEY_ANY,
@@ -361,7 +364,6 @@ Function Get-SCEPCertificate {
                     $KeyAlgorithm
                 )
     
-                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509privatekey-put_algorithm
                 $PrivateKey.Algorithm = $Algorithm
     
                 [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($Algorithm))
@@ -369,7 +371,6 @@ Function Get-SCEPCertificate {
     
             # Key Length is only relevant when Key Type is "RSA"
             If ($KeyAlgorithm -eq "RSA") {
-    
                 $PrivateKey.Length = $KeyLength
             }
     
@@ -405,8 +406,6 @@ Function Get-SCEPCertificate {
                 $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
                 $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
         
-                # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
-
                 Foreach ($Entry in $Upn) {
 
                     $AlternativeNameObject = New-Object -ComObject X509Enrollment.CAlternativeName
@@ -466,7 +465,7 @@ Function Get-SCEPCertificate {
 
             If ($ChallengePassword) {
                 <#
-                    https://tools.ietf.org/html/draft-nourse-scep-23#section-2.2
+                    RFC 8894
                     PKCS#10 [RFC2986] specifies a PKCS#9 [RFC2985] challengePassword
                     attribute to be sent as part of the enrollment request.  Inclusion of
                     the challengePassword by the SCEP client is OPTIONAL and allows for
@@ -479,7 +478,6 @@ Function Get-SCEPCertificate {
 
         <#
             Identify the Root CA Certificate that was delivered with the Chain
-            https://tools.ietf.org/html/rfc5280#section-6.1
             A certificate is self-issued if the same DN appears in the subject and issuer fields 
         #>
         if ($null -eq $RootCaCert) {
@@ -493,14 +491,11 @@ Function Get-SCEPCertificate {
         }
 
         # Initialize the IX509SCEPEnrollment Interface
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509scepenrollment
         $SCEPEnrollmentInterface = New-Object -ComObject "X509Enrollment.CX509SCEPEnrollment"
 
         # Let's try to build a SCEP Enrollment Message now...
-
         Try {
 
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-initialize
             $SCEPEnrollmentInterface.Initialize(
                 $CertificateRequestPkcs10,
                 (Get-Hash -Bytes $RootCaCert.RawData -HashAlgorithm "MD5"),
@@ -517,17 +512,15 @@ Function Get-SCEPCertificate {
 
         # Sets the preferred hash and encryption algorithms for the request.
         # If you do not set this property, then the default hash and encryption algorithms will be used.
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-put_servercapabilities
         $SCEPEnrollmentInterface.ServerCapabilities = $GetCACaps
 
         <#
-            https://tools.ietf.org/html/draft-nourse-scep-23#section-2.2
+            RFC 8894
             If the requester does not have an appropriate existing
             certificate, then a locally generated self-signed certificate
             MUST be used instead.  The self-signed certificate MUST use the
             same subject name as in the PKCS#10 request.
 
-            https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-put_signercertificate
             To create a renewal request, you must set this property prior to calling the CreateRequestMessage method. 
             Otherwise, the CreateRequestMessage method will create a new request and generate a self-signed certificate 
             using the same private key as the inner PKCSV10 reqeust.
@@ -536,7 +529,6 @@ Function Get-SCEPCertificate {
 
             $SignerCertificate = New-Object -ComObject X509Enrollment.CSignerCertificate
 
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-isignercertificate-initialize
             $SignerCertificate.Initialize(
                 [int]($SigningCert.PSParentPath -match "Machine"),
                 $X509PrivateKeyVerify.VerifyNone, # We did this already during Parameter Validation
@@ -547,7 +539,6 @@ Function Get-SCEPCertificate {
         }
 
         # Building the PKCS7 Message for the SCEP Enrollment
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-createrequestmessage
         $SCEPRequestMessage = $SCEPEnrollmentInterface.CreateRequestMessage(
             $EncodingType.XCN_CRYPT_STRING_BASE64
             )
@@ -590,13 +581,11 @@ Function Get-SCEPCertificate {
         Try {
 
             # Process a response message and return the disposition of the message.
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-processresponsemessage
             $Disposition = $SCEPEnrollmentInterface.ProcessResponseMessage(
                 $SCEPResponse,
                 $EncodingType.XCN_CRYPT_STRING_BASE64
                 )
 
-            # https://docs.microsoft.com/en-us/windows/win32/api/certpol/ne-certpol-x509scepdisposition
             Switch ($Disposition) {
 
                 $X509SCEPDisposition.SCEPDispositionFailure {
@@ -604,34 +593,29 @@ Function Get-SCEPCertificate {
                     $ErrorMessage = ''
                     $ErrorMessage += "The SCEP Server rejected the Certificate Request!`n"
 
-                    # The Failinfo Method is only present in Windows 10
-                    # Windows 8.1 / 2012 R2 Users therefore won't get any fancy error message, sadly
-                    If ([int32](Get-CimInstance -ClassName Win32_OperatingSystem).BuildNumber -ge $BUILD_NUMBER_WINDOWS_10) {
+                    $FailInfo = ($SCEPFailInfo | Where-Object { $_.Code -eq $SCEPEnrollmentInterface.FailInfo() })
 
-                        $FailInfo = ($SCEPFailInfo | Where-Object { $_.Code -eq $SCEPEnrollmentInterface.FailInfo() })
+                    $ErrorMessage += "SCEP Failure Information: $($FailInfo.Message) ($($FailInfo.Code)) $($FailInfo.Description)`n"
+                    $ErrorMessage += "Additional Information returned by the Server: $($SCEPEnrollmentInterface.Status().Text)`n"
 
-                        $ErrorMessage += "SCEP Failure Information: $($FailInfo.Message) ($($FailInfo.Code)) $($FailInfo.Description)`n"
-                        $ErrorMessage += "Additional Information returned by the Server: $($SCEPEnrollmentInterface.Status().Text)`n"
+                    If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERT_E_WRONG_USAGE) {
+                        $ErrorMessage += "Possible reason(s): The Challenge Password has been used already."
+                    }
 
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERT_E_WRONG_USAGE) {
-                            $ErrorMessage += "Possible reason(s): The Challenge Password has been used already."
-                        }
+                    If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.TRUST_E_CERT_SIGNATURE) {
+                        $ErrorMessage += "Possible reason(s): The SCEP Server requires a Challenge Password but none was supplied."
+                    }
 
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.TRUST_E_CERT_SIGNATURE) {
-                            $ErrorMessage += "Possible reason(s): The SCEP Server requires a Challenge Password but none was supplied."
-                        }
+                    If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.ERROR_NOT_FOUND) {
+                        $ErrorMessage += "Possible reason(s): The Challenge Password supplied is unknown to the SCEP Server, or it has been used already."
+                    }
 
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.ERROR_NOT_FOUND) {
-                            $ErrorMessage += "Possible reason(s): The Challenge Password supplied is unknown to the SCEP Server, or it has been used already."
-                        }
+                    If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERTSRV_E_BAD_REQUESTSUBJECT) {
+                        $ErrorMessage += "Possible reason(s): The CA denied your request because an invalid Subject was requested."
+                    }
 
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.CERTSRV_E_BAD_REQUESTSUBJECT) {
-                            $ErrorMessage += "Possible reason(s): The CA denied your request because an invalid Subject was requested."
-                        }
-
-                        If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.RPC_S_SERVER_UNAVAILABLE) {
-                            $ErrorMessage += "Possible reason(s): The SCEP Server was unable to contact the Certification Authority."
-                        }
+                    If ($SCEPEnrollmentInterface.Status().Text -match $NDESErrorCode.RPC_S_SERVER_UNAVAILABLE) {
+                        $ErrorMessage += "Possible reason(s): The SCEP Server was unable to contact the Certification Authority."
                     }
 
                     Write-Error -Message $ErrorMessage
@@ -653,7 +637,6 @@ Function Get-SCEPCertificate {
                 $X509SCEPDisposition.SCEPDispositionSuccess {
 
                     # We load the Certificate into an X509Certificate2 Object
-                    # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509scepenrollment-get_certificate
                     $CertificateObject = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String(
 						$SCEPEnrollmentInterface.Certificate($EncodingType.XCN_CRYPT_STRING_BASE64)))
 

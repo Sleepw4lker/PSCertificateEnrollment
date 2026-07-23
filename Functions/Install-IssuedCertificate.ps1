@@ -89,7 +89,6 @@ Function Install-IssuedCertificate {
             }
         }
 
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509enrollment-installresponse
         Try {
 
             If ($Force.IsPresent) {

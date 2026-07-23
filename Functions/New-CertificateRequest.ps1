@@ -316,7 +316,10 @@ Function New-CertificateRequest {
             "ECDSA_P521",
             "ECDH_P256",
             "ECDH_P384",
-            "ECDH_P521"
+            "ECDH_P521",
+            "ML-DSA:44",
+            "ML-DSA:65",
+            "ML-DSA:87"
             )]
         [String]
         $KeyAlgorithm = "RSA",
@@ -358,11 +361,6 @@ Function New-CertificateRequest {
         [Int]
         $ClockSkew = 10,
 
-        <#
-            https://tools.ietf.org/html/rfc5280#section-4.1.2.2
-            Certificate users MUST be able to handle serialNumber values up to 20 octets.
-            Conforming CAs MUST NOT use serialNumber values longer than 20 octets.
-        #>
         [Parameter(Mandatory=$False)]
         [ValidatePattern("^[0-9a-fA-F]{1,40}$")]
         [String]
@@ -374,7 +372,7 @@ Function New-CertificateRequest {
         $SubjectEncoding = "PrintableString",
 
         [Parameter(Mandatory=$False)]
-        [ValidateRange(-1,16)] # Should be sufficient...? RFC?
+        [ValidateRange(-1,16)]
         [Int]
         $PathLength = -1, # -1 means none
 
@@ -387,15 +385,7 @@ Function New-CertificateRequest {
         $OcspNoRevocationCheck
     )
 
-    begin {}
-
     process {
-
-        # Ensuring the Code will be executed on a supported Operating System
-        If ([int32](Get-CimInstance -ClassName Win32_OperatingSystem).BuildNumber -lt $BUILD_NUMBER_WINDOWS_7) {
-            Write-Error -Message "This must be executed on Windows 7/Windows Server 2008 R2 or newer!"
-            return 
-        }
 
         # Ensuring we work with Elevation when messing with the Computer Certificate Store
         If ($MachineContext.IsPresent) {
@@ -414,16 +404,13 @@ Function New-CertificateRequest {
         }
 
         # We first create the Private Key
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509privatekey
         # Setting the Provider Attribute on the CertRequest Object afterwards seems not to work with Key Storage Providers...why?
         $PrivateKey = New-Object -ComObject X509Enrollment.CX509PrivateKey
         
         $PrivateKey.ProviderName = $Ksp
-
         $PrivateKey.MachineContext = [int]($MachineContext.IsPresent)
         $PrivateKey.ExportPolicy = [int]($PrivateKeyExportable.IsPresent)
         
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-x509keyspec
         If ($False -eq (Get-KeyStorageProvider | Where-Object { $_.Name -eq $Ksp }).LegacyCsp) {
 
             # The intended use is not identified. This value is set if the provider that supports the key is a 
@@ -457,7 +444,6 @@ Function New-CertificateRequest {
 
             $Algorithm = New-Object -ComObject X509Enrollment.CObjectId
 
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-iobjectid-initializefromalgorithmname
             $Algorithm.InitializeFromAlgorithmName(
                 $ObjectIdGroupId.XCN_CRYPT_PUBKEY_ALG_OID_GROUP_ID,
                 $ObjectIdPublicKeyFlags.XCN_CRYPT_OID_INFO_PUBKEY_ANY,
@@ -465,7 +451,6 @@ Function New-CertificateRequest {
                 $KeyAlgorithm
             )
 
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509privatekey-put_algorithm
             $PrivateKey.Algorithm = $Algorithm
 
             [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($Algorithm))
@@ -487,7 +472,6 @@ Function New-CertificateRequest {
         }
 
         # Begin Assembling the Certificate Signing Request
-        # https://docs.microsoft.com/en-us/windows/desktop/seccertenroll/certificate-request-functions
         If (($SelfSign.IsPresent) -or ($SigningCert)) {
             # Enables you to create a certificate directly without applying to a certification authority (CA).
             $CertificateRequestPkcs10 = New-Object -ComObject X509Enrollment.CX509CertificateRequestCertificate
@@ -498,11 +482,7 @@ Function New-CertificateRequest {
             $CertificateRequestPkcs10 = New-Object -ComObject X509Enrollment.CX509CertificateRequestPkcs10
         }
 
-        $CertificateRequestPkcs10.InitializeFromPrivateKey(
-            [int]($MachineContext.IsPresent)+1,
-            $PrivateKey, 
-            [String]::Empty
-        )
+        $CertificateRequestPkcs10.InitializeFromPrivateKey([int]($MachineContext.IsPresent)+1, $PrivateKey, [String]::Empty)
 
         # Determine if we shall encode Subject and Issuer in PrintableString
         # (Default for AD CS, non-default for CX509CertificateRequestCertificate) or UTF-8
@@ -515,8 +495,6 @@ Function New-CertificateRequest {
         }
 
         # Set Certificate Subject Name
-        # https://msdn.microsoft.com/en-us/library/windows/desktop/aa379394(v=vs.85).aspx
-
         Try {
             $SubjectDnObject = New-Object -ComObject "X509Enrollment.CX500DistinguishedName"
             $SubjectDnObject.Encode(
@@ -534,16 +512,11 @@ Function New-CertificateRequest {
         }
 
         If ($SelfSign.IsPresent) {
-            <#
-                https://tools.ietf.org/html/rfc5280#section-6.1
-                A certificate is self-issued if the same DN appears in the subject and issuer fields 
-            #>
             $CertificateRequestPkcs10.Issuer = $SubjectDnObject
         }
 
         If ($SigningCert) {
 
-            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa376832(v=vs.85).aspx
             $SignerCertificate =  New-Object -ComObject X509Enrollment.CSignerCertificate
             $SignerCertificate.Initialize(
                 [int]($SigningCert.PSParentPath -match "Machine"),
@@ -561,14 +534,7 @@ Function New-CertificateRequest {
             # the certificate chain and it works independently of the subject and issuer codification (PrintableString or UTF8)
             # During revocation status validation, a binary comparison is made between the certificate issuer and the CRL issuer,
             # so both fields must use the same codification in order to match (PrintableString or UTF8)
-            # https://social.technet.microsoft.com/Forums/windowsserver/en-US/0459983f-4f19-48ee-b099-dfd484483176/active-directory-certificate-services-cannot-verify-certificate-chain-bad-cert-issuer-base-crl?forum=winserversecurity
-            # https://msdn.microsoft.com/en-us/library/windows/desktop/bb540814(v=vs.85).aspx
-            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa379394(v=vs.85).aspx
-
-            $IssuerDnObject.Encode(
-                $SigningCert.Subject,
-                $SubjectEncodingFlag
-            )
+            $IssuerDnObject.Encode($SigningCert.Subject, $SubjectEncodingFlag)
             $CertificateRequestPkcs10.Issuer = $IssuerDnObject
 
         }
@@ -576,20 +542,16 @@ Function New-CertificateRequest {
         # These apply to all cases where a Certificate will be generated instead of a Signing Request
         If (($SelfSign.IsPresent) -or ($SigningCert)) {
 
-            # Set Certificate Validity Period
-
             # Validity Periods are always written into the Cert as Universal Time
             $Now = (Get-Date).ToUniversalTime()
 
             Switch ($ValidityPeriod) {
-
                 "Minutes"   { $NotAfter = $Now.AddMinutes($ValidityPeriodUnits) }
                 "Hours"     { $NotAfter = $Now.AddHours($ValidityPeriodUnits) }
                 "Days"      { $NotAfter = $Now.AddDays($ValidityPeriodUnits) }
                 "Weeks"     { $NotAfter = $Now.AddWeeks($ValidityPeriodUnits) }
                 "Months"    { $NotAfter = $Now.AddMonths($ValidityPeriodUnits) }
                 "Years"     { $NotAfter = $Now.AddYears($ValidityPeriodUnits) }
-
             }
 
             # Backup $ClockSkew in Minutes (Default: 10) to avoid timing issues
@@ -599,136 +561,20 @@ Function New-CertificateRequest {
             # Set Serial Number of the Certificate if specified as Argument, otherwise use a random SN
             If ($SerialNumber) {
 
-                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509certificaterequestpkcs10-initializedecode
                 $CertificateRequestPkcs10.SerialNumber.InvokeSet(
                     $(Convert-StringToCertificateSerialNumber -SerialNumber $SerialNumber), 
                     $EncodingType.XCN_CRYPT_STRING_BASE64
                 )
-
             }
-
         }
 
-        # Set the Key Usage Extension
-
-        If ($CA.IsPresent) {
-
-            # CA Certifcate Key Usages
-            # Add these to the Parameters (if not $CA or look if different default Values can be applied)
-
-            # https://security.stackexchange.com/questions/49229/root-certificate-key-usage-non-self-signed-end-entity
-            # https://msdn.microsoft.com/en-us/library/system.security.cryptography.x509certificates.x509keyusageflags(v=vs.110).aspx
-            # Since a CA is supposed to issue certificate and CRL, it should have, on a general basis, the keyCertSign and cRLSign flags. 
-            # These two flags are sufficient.
-            [Security.Cryptography.X509Certificates.X509KeyUsageFlags]$KeyUsageFlags = "KeyCertSign, CrlSign"
-
-        }
-        Else {
-
-            # Leaf Certificate Key Usages
-            [Security.Cryptography.X509Certificates.X509KeyUsageFlags]$KeyUsageFlags = $KeyUsage
-
-        }
-
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionkeyusage
-        $KeyUsageExtension = New-Object -ComObject X509Enrollment.CX509ExtensionKeyUsage
-        $KeyUsageExtension.InitializeEncode([Int]$KeyUsageFlags)
-        $KeyUsageExtension.Critical = $True
-
-        # Add the Key Usage Extension to the Certificate
-        $CertificateRequestPkcs10.X509Extensions.Add($KeyUsageExtension)
-
-        # If we build a CA certificate, set Basic Constraints Extension
-        If ($CA.IsPresent) {
-
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionbasicconstraints
-            $BasicConstraintsExtension = New-Object -ComObject X509Enrollment.CX509ExtensionBasicConstraints
-
-            $BasicConstraintsExtension.InitializeEncode(
-                $True, # it is a CA
-                $PathLength
-            )
-
-            # Only mark as critical if it is a CA certificate
-            $BasicConstraintsExtension.Critical = $True
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($BasicConstraintsExtension)
-        }
-
-        If ($CertificateTemplate) {
-
-            # Version 2 Certificate Template Information
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensiontemplate
-
-            $TemplateExtension = New-Object -ComObject X509Enrollment.CX509ExtensionTemplate
-
-            $TemplateOid = New-Object -ComObject X509Enrollment.CObjectId
-            $TemplateOid.InitializeFromValue($CertificateTemplate)
-
-            $TemplateExtension.InitializeEncode($TemplateOid, 100, 0)
-
-            $CertificateRequestPkcs10.X509Extensions.Add($TemplateExtension)
-                                
-        }
-
-        # Set the Enhanced Key Usages Extension if specified as Argument
-        If ($Eku) {
-    
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionenhancedkeyusage
-            $EnhancedKeyUsageExtension = New-Object -ComObject X509Enrollment.CX509ExtensionEnhancedKeyUsage
-            $EnhancedKeyUsageOids = New-Object -ComObject X509Enrollment.CObjectIds.1
-
-            $Eku | Sort-Object | Get-Unique | ForEach-Object -Process {
-
-                $EnhancedKeyUsageOid = New-Object -ComObject X509Enrollment.CObjectId
-                $EnhancedKeyUsageOid.InitializeFromValue($EkuNameToOidTable[$_])
-                $EnhancedKeyUsageOids.Add($EnhancedKeyUsageOid)
-    
-            }
-
-            $EnhancedKeyUsageExtension.InitializeEncode($EnhancedKeyUsageOids)
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($EnhancedKeyUsageExtension)
-
-        }
-
-
-        # Set the Application Policies Extension if specified as Argument
-        If ($AppPolicy) {
-
-            # https://learn.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionmsapplicationpolicies
-            $ApplicationPoliciesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionMSApplicationPolicies
-
-            $ApplicationPolicyOids = New-Object -ComObject X509Enrollment.CCertificatePolicies.1
-            
-            $AppPolicy | Sort-Object | Get-Unique | ForEach-Object -Process {
-            
-                $ApplicationPolicyOid = New-Object -ComObject X509Enrollment.CObjectId
-                $ApplicationPolicyOid.InitializeFromValue($EkuNameToOidTable[$_])
-            
-                $CertificatePolicy = New-Object -ComObject X509Enrollment.CCertificatePolicy
-                $CertificatePolicy.Initialize($ApplicationPolicyOid)
-                $ApplicationPolicyOids.Add($CertificatePolicy)
-            
-            }
-            
-            $ApplicationPoliciesExtension.InitializeEncode($ApplicationPolicyOids)
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($ApplicationPoliciesExtension)
-
-        }
+        $X509Extensions = @{}
 
         # Set the Subject Alternative Names Extension if specified as Argument
         If ($Upn -or $Email -or $Dns -or $IP -or $Uri) {
 
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionalternativenames
             $SubjectAlternativeNamesExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAlternativeNames
             $Sans = New-Object -ComObject X509Enrollment.CAlternativeNames
-
-            # https://msdn.microsoft.com/en-us/library/aa374981(VS.85).aspx
 
             Foreach ($Entry in $Upn) {
             
@@ -799,130 +645,61 @@ Function New-CertificateRequest {
 
         }
 
-        # Set the S/MIME Capabilities Extension if specified as Argument
+        If ($CA.IsPresent) {
+            $KeyUsage = @("KeyCertSign", "CrlSign")
+
+            # TODO: This should be critical
+            $X509Extensions.Add($Oid.szOID_BASIC_CONSTRAINTS2, $(New-BasicConstraintsExtension -IsCA -PathLength $PathLength))
+        }
+
+        $X509Extensions.Add($Oid.szOID_KEY_USAGE, $(New-KeyUsageExtension -KeyUsage $KeyUsage))
+
+        If ($Eku) {
+            $X509Extensions.Add($Oid.XCN_OID_ENHANCED_KEY_USAGE, $(New-ExtendedKeyUsageExtension -Eku $Eku))
+        }
+
         If ($Smime) {
-
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionsmimecapabilities
-            $SmimeExtension = New-Object -ComObject X509Enrollment.CX509ExtensionSmimeCapabilities
-
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ismimecapabilities
-            $SmimeCapabilitiesObject = New-Object -ComObject X509Enrollment.CSmimeCapabilities
-
-            $Smime | ForEach-Object -Process {
-
-                # The Bit length is only relevant for RC2 and RC4. We use the same defaults as Microsoft does.
-                If ($_ -in ("rc2","rc2wrap","rc4")) { $BitCount = 128 } Else { $BitCount = 0 }
-
-                $OidObject = New-Object -ComObject X509Enrollment.CObjectId
-                $OidObject.InitializeFromValue($SmimeCapabilityToOidTable[$_])
-
-                # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ismimecapability-initialize
-                $SmimeCapabilityObject = New-Object -ComObject X509Enrollment.CSmimeCapability
-                $SmimeCapabilityObject.Initialize(
-                    $OidObject,
-                    $BitCount
-                )
-                $SmimeCapabilitiesObject.Add($SmimeCapabilityObject)
-            }
-
-            $SmimeExtension.InitializeEncode($SmimeCapabilitiesObject)
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($SmimeExtension)
+            $X509Extensions.Add($Oid.SmimeCapabilities, $(New-SmimeCapabilitiesExtension -Smime $Smime))
         }
-    
-        # Set the Authority Key Identifier Extension if specified as Argument
+
         If ($Aki) {
-
-            # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionauthoritykeyidentifier
-            $AkiExtension = New-Object -ComObject X509Enrollment.CX509ExtensionAuthorityKeyIdentifier 
-
-            # https://docs.microsoft.com/en-us/windows/desktop/api/certenroll/nf-certenroll-ix509extensionauthoritykeyidentifier-initializeencode
-            $AkiExtension.InitializeEncode(
-                $EncodingType.XCN_CRYPT_STRING_BASE64, 
-                $(Convert-DERToBASE64 -String $Aki)
-            )
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($AkiExtension)
-
+            $X509Extensions.Add($Oid.szOID_AUTHORITY_KEY_IDENTIFIER2, $(New-AkiExtension -Aki $Aki))
         }
 
-        # Set the szOID_NTDS_CA_SECURITY_EXT if specified as argument
         If ($Sid) {
-            $SidExtension = New-Object -ComObject X509Enrollment.CX509Extension
-            $SidExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
-            $SidExtensionOid.InitializeFromValue($Oid.szOID_NTDS_CA_SECURITY_EXT)
-            $SidExtension.Critical = $False
-            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa378511(v=vs.85).aspx
-            $SidExtension.Initialize(
-                $SidExtensionOid, 
-                $EncodingType.XCN_CRYPT_STRING_BASE64, 
-                $(New-SidExtension -Sid $Sid)
-            )
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($SidExtension)
+            $X509Extensions.Add($Oid.szOID_NTDS_CA_SECURITY_EXT, $(New-SidExtension -Sid $Sid))
         }
 
-        # Set the CRL Distribution Points Extension if specified as Argument
         If ($Cdp) {
-
-            # No Interface for this OID, see https://msdn.microsoft.com/en-us/library/windows/desktop/aa378077(v=vs.85).aspx
-            # Therefore, we will build the data by hand (Function New-CdpExtension)
-            $CdpExtension = New-Object -ComObject X509Enrollment.CX509Extension
-            $CdpExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
-            $CdpExtensionOid.InitializeFromValue($Oid.XCN_OID_CRL_DIST_POINTS)
-            $CdpExtension.Critical = $False
-            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa378511(v=vs.85).aspx
-            $CdpExtension.Initialize(
-                $CdpExtensionOid, 
-                $EncodingType.XCN_CRYPT_STRING_BASE64, 
-                $(New-CdpExtension -Url $Cdp)
-            )
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($CdpExtension)
-
+            $X509Extensions.Add($Oid.XCN_OID_CRL_DIST_POINTS, $(New-CdpExtension -Url $Cdp))
         }
 
-        # Set the Authority Information Access Extension if specified as Argument
         If ($Aia) {
-
-            # No Interface for this OID, see https://msdn.microsoft.com/en-us/library/windows/desktop/aa378077(v=vs.85).aspx
-            # Therefore, we will build the data by hand (Function New-AiaExtension)
-            $AiaExtension = New-Object -ComObject X509Enrollment.CX509Extension
-            $AiaExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
-            $AiaExtensionOid.InitializeFromValue($Oid.XCN_OID_AUTHORITY_INFO_ACCESS)
-            $AiaExtension.Critical = $False
-
-            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa378511(v=vs.85).aspx
-            $AiaExtension.Initialize(
-                $AiaExtensionOid, 
-                $EncodingType.XCN_CRYPT_STRING_BASE64, 
-                $(New-AiaExtension -Url $Aia)
-            )
-
-            # Adding the Extension to the Certificate
-            $CertificateRequestPkcs10.X509Extensions.Add($AiaExtension)
-
+            $X509Extensions.Add($Oid.XCN_OID_AUTHORITY_INFO_ACCESS, $(New-AiaExtension -Url $Aia))
         }
 
         If ($OcspNoRevocationCheck) {
-            $OcspNoRevocationCheckExtension = New-Object -ComObject X509Enrollment.CX509Extension
-            $OcspNoRevocationCheckExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
-            $OcspNoRevocationCheckExtensionOid.InitializeFromValue($Oid.OcspNoRevocationCheck)
-            $OcspNoRevocationCheckExtension.Critical = $False
-            $OcspNoRevocationCheckExtension.Initialize(
-                $OcspNoRevocationCheckExtensionOid, 
-                $EncodingType.XCN_CRYPT_STRING_BINARY,
-                $null
-            )
-            $CertificateRequestPkcs10.X509Extensions.Add($OcspNoRevocationCheckExtension)
+            $X509Extensions.Add($Oid.OcspNoRevocationCheck, $null)
+        }
+
+        $X509Extensions.GetEnumerator() | ForEach-Object -Process {
+
+            $X509Extension = New-Object -ComObject X509Enrollment.CX509Extension
+            $X509ExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
+
+            try {
+                $X509ExtensionOid.InitializeFromValue($_.Key)
+                $X509Extension.Critical = $False # TODO: Support Critical Extensions
+                $X509Extension.Initialize($X509ExtensionOid, $EncodingType.XCN_CRYPT_STRING_BASE64, $_.Value)
+                $CertificateRequestPkcs10.X509Extensions.Add($X509Extension)
+            }
+            finally {
+                $X509Extension | Unregister-ComObject
+                $X509ExtensionOid | Unregister-ComObject
+            }
         }
 
         # Specifying the Hashing Algorithm to use for the Request / the Certificate
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-iobjectid
         $HashAlgorithmObject = New-Object -ComObject X509Enrollment.CObjectId
         $HashAlgorithmObject.InitializeFromAlgorithmName(
             $ObjectIdGroupId.XCN_CRYPT_HASH_ALG_OID_GROUP_ID,
@@ -932,17 +709,9 @@ Function New-CertificateRequest {
         )
         $CertificateRequestPkcs10.HashAlgorithm = $HashAlgorithmObject
 
-        # Encoding the Certificate Signing Request
-        Try {
-            $CertificateRequestPkcs10.Encode()
-        }
-        Catch {
-            Write-Error -Message $PSItem.Exception.Message
-            return  
-        }
+        $CertificateRequestPkcs10.Encode()
 
         # Building the Certificate Request
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509enrollment
         $EnrollmentObject = New-Object -ComObject X509Enrollment.CX509Enrollment
         $EnrollmentObject.InitializeFromRequest($CertificateRequestPkcs10)
         $CertificateRequest = $EnrollmentObject.CreateRequest($EncodingType.XCN_CRYPT_STRING_BASE64REQUESTHEADER)
@@ -982,34 +751,8 @@ Function New-CertificateRequest {
         $PrivateKey,
         $SignerCertificate,
         $IssuerDnObject,
-        $BasicConstraintsExtension,
-        $EnhancedKeyUsageExtension,
-        $EnhancedKeyUsageOids,
-        $EnhancedKeyUsageOid,
-        $ApplicationPoliciesExtension,
-        $ApplicationPolicyOids,
-        $ApplicationPolicyOid,
-        $CertificatePolicy,
-        $TemplateExtension,
-        $TemplateOid,
-        $SubjectAlternativeNamesExtension,
-        $Sans,
-        $AlternativeNameObject,
-        $AkiExtension,
-        $CdpExtension,
-        $CdpExtensionOid,
-        $AiaExtension,
-        $AiaExtensionOid,
         $HashAlgorithmObject,
-        $EnrollmentObject | ForEach-Object -Process {
-
-            Try {
-                [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($_))
-            }
-            Catch {
-                # we don't want to return anything here
-            }
-        }
+        $EnrollmentObject | Unregister-ComObject
     }
 
     end {}

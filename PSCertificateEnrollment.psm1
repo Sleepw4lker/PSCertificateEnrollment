@@ -1,10 +1,4 @@
-﻿# https://docs.microsoft.com/en-us/windows/release-information/
-New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_7 -Value 7601
-New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_8_1 -Value 9600
-New-Variable -Option Constant -Name BUILD_NUMBER_WINDOWS_10 -Value 10240
-
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-objectidgroupid
-New-Variable -Option Constant -Name ObjectIdGroupId -Value @{
+﻿New-Variable -Option Constant -Name ObjectIdGroupId -Value @{
     XCN_CRYPT_ANY_GROUP_ID = 0
     XCN_CRYPT_HASH_ALG_OID_GROUP_ID = 1
     XCN_CRYPT_FIRST_ALG_OID_GROUP_ID = 1
@@ -27,14 +21,12 @@ New-Variable -Option Constant -Name ObjectIdGroupId -Value @{
     XCN_CRYPT_OID_PREFER_CNG_ALGID_FLAG = 1073741824
 }
 
-#  https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-objectidpublickeyflags
 New-Variable -Option Constant -Name ObjectIdPublicKeyFlags -Value @{
     XCN_CRYPT_OID_INFO_PUBKEY_ANY = 0
     XCN_CRYPT_OID_INFO_PUBKEY_SIGN_KEY_FLAG = 0x80000000
     XCN_CRYPT_OID_INFO_PUBKEY_ENCRYPT_KEY_FLAG = 0x40000000 
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest2-getcaproperty
 New-Variable -Option Constant -Name PropType -Value @{
     PROPTYPE_LONG = 1
     PROPTYPE_DATE = 2
@@ -42,7 +34,6 @@ New-Variable -Option Constant -Name PropType -Value @{
     PROPTYPE_STRING = 4
 }
 
-# https://msdn.microsoft.com/en-us/library/windows/desktop/aa379394.aspx
 New-Variable -Option Constant -Name X500NameFlags -Value @{
     XCN_CERT_NAME_STR_NONE = 0
     XCN_CERT_SIMPLE_NAME_STR = 1
@@ -63,10 +54,8 @@ New-Variable -Option Constant -Name X500NameFlags -Value @{
     XCN_CERT_NAME_STR_DISABLE_UTF8_DIR_STR_FLAG = 0x100000
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-objectidgroupid
 New-Variable -Option Constant -Name Oid -Value @{
 
-    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa379367(v=vs.85).aspx
     XCN_OID_CRL_DIST_POINTS = '2.5.29.31'
     XCN_OID_AUTHORITY_INFO_ACCESS = '1.3.6.1.5.5.7.1.1'
     XCN_OID_ENHANCED_KEY_USAGE = "2.5.29.37"
@@ -75,7 +64,6 @@ New-Variable -Option Constant -Name Oid -Value @{
     XCN_OID_CERTSRV_CA_VERSION = "1.3.6.1.4.1.311.21.1"
     XCN_OID_CRL_NEXT_PUBLISH = "1.3.6.1.4.1.311.21.4"
     
-    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa378132(v=vs.85).aspx
     XCN_OID_ANY_APPLICATION_POLICY = "1.3.6.1.4.1.311.10.12.1"
     XCN_OID_AUTO_ENROLL_CTL_USAGE = "1.3.6.1.4.1.311.20.1"
     XCN_OID_DRM = "1.3.6.1.4.1.311.10.5.1"
@@ -110,7 +98,6 @@ New-Variable -Option Constant -Name Oid -Value @{
     XCN_OID_ROOT_LIST_SIGNER = "1.3.6.1.4.1.311.10.3.9"
     XCN_OID_WHQL_CRYPTO = "1.3.6.1.4.1.311.10.3.5"
 
-    # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-ix509extensionsmimecapabilities
     XCN_OID_OIWSEC_desCBC = "1.3.14.3.2.7"
     XCN_OID_RSA_DES_EDE3_CBC = "1.2.840.113549.3.7"
     XCN_OID_RSA_RC2CBC = "1.2.840.113549.3.2"
@@ -129,20 +116,24 @@ New-Variable -Option Constant -Name Oid -Value @{
     XCN_OID_KP_RDC = "1.3.6.1.4.1.311.54.1.2"
     XCN_OID_KP_DOCUMENT_ENCRYPTION = "1.3.6.1.4.1.311.80.1"
 
-    # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-gpnap/a48b02b2-2a10-4eb0-bed4-1807a6d2f5ad
     md5NoSign = "1.2.840.113549.2.5"
     sha1NoSign = "1.3.14.3.2.26"
     sha256NoSign = "2.16.840.1.101.3.4.2.1"
     sha384NoSign = "2.16.840.1.101.3.4.2.2"
     sha512NoSign = "2.16.840.1.101.3.4.2.3"
 
-    # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-winprotlp/e168a474-7de2-421c-b460-91adf87692a3
     szOID_NTDS_CA_SECURITY_EXT = "1.3.6.1.4.1.311.25.2"
 
+    szOID_CERTIFICATE_TEMPLATE = "1.3.6.1.4.1.311.21.7"
+    szOID_AUTHORITY_KEY_IDENTIFIER2 = "2.5.29.35"
+    szOID_APPLICATION_CERT_POLICIES = "1.3.6.1.4.1.311.21.10"
+    szOID_BASIC_CONSTRAINTS2 = "2.5.29.19"
+    szOID_KEY_USAGE = "2.5.29.15"
+
     OcspNoRevocationCheck = "1.3.6.1.5.5.7.48.1.5"
+    SmimeCapabilities = "1.2.840.113549.1.9.15"
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest2-getfullresponseproperty
 New-Variable -Option Constant -Name FullResponseProperty -Value @{
     FR_PROP_NONE = 0
     FR_PROP_FULLRESPONSE = 1
@@ -168,9 +159,6 @@ New-Variable -Option Constant -Name FullResponseProperty -Value @{
     FR_PROP_ATTESTATIONPROVIDERNAME = 21
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-submit
-# https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-getcertificate
-# https://github.com/tpn/winsdk-10/blob/master/Include/10.0.10240.0/um/CertCli.h
 New-Variable -Option Constant -Name RequestFlags -Value @{
     CR_IN_BASE64HEADER = 0
     CR_IN_BASE64 = 1
@@ -182,7 +170,6 @@ New-Variable -Option Constant -Name RequestFlags -Value @{
     CR_OUT_BINARY = 2
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-alternativenametype
 New-Variable -Option Constant -Name AlternativeNameType -Value @{
     XCN_CERT_ALT_NAME_UNKNOWN = 0
     XCN_CERT_ALT_NAME_OTHER_NAME = 1
@@ -196,7 +183,6 @@ New-Variable -Option Constant -Name AlternativeNameType -Value @{
     XCN_CERT_ALT_NAME_USER_PRINCIPLE_NAME = 11
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-submit
 New-Variable -Option Constant -Name DispositionType -Value @{
     CR_DISP_INCOMPLETE = 0
     CR_DISP_ERROR = 1
@@ -207,7 +193,6 @@ New-Variable -Option Constant -Name DispositionType -Value @{
     CR_DISP_REVOKED = 6
 }
 
-# https://msdn.microsoft.com/en-us/library/windows/desktop/aa374936(v=vs.85).aspx
 New-Variable -Option Constant -Name EncodingType -Value @{
     XCN_CRYPT_STRING_NOCR = [Int]::MinValue
     XCN_CRYPT_STRING_BASE64HEADER = 0
@@ -233,14 +218,12 @@ New-Variable -Option Constant -Name EncodingType -Value @{
     XCN_CRYPT_STRING_NOCRLF = 1073741824
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-x509keyspec
 New-Variable -Option Constant -Name X509KeySpec -Value @{
     XCN_AT_NONE = 0
     XCN_AT_KEYEXCHANGE = 1
     XCN_AT_SIGNATURE = 2
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certpol/ne-certpol-x509scepdisposition
 New-Variable -Option Constant -Name X509SCEPDisposition -Value @{
     SCEPDispositionUnknown = -1
     SCEPDispositionSuccess = 0
@@ -249,7 +232,6 @@ New-Variable -Option Constant -Name X509SCEPDisposition -Value @{
     SCEPDispositionPendingChallenge = 11
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-x509privatekeyverify
 New-Variable -Option Constant -Name X509PrivateKeyVerify -Value @{ 
     VerifyNone = 0
     VerifySilent = 1
@@ -258,13 +240,11 @@ New-Variable -Option Constant -Name X509PrivateKeyVerify -Value @{
     VerifyAllowUI = 8
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-algorithmflags
 New-Variable -Option Constant -Name AlgorithmFlags -Value @{
     AlgorithmFlagsNone = 0
     AlgorithmFlagsWrap = 1
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-installresponserestrictionflags
 New-Variable -Option Constant -Name InstallResponseRestrictionFlags -Value @{
     AllowNone = 0
     AllowNoOutstandingRequest = 1
@@ -272,9 +252,6 @@ New-Variable -Option Constant -Name InstallResponseRestrictionFlags -Value @{
     AllowUntrustedRoot = 4
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certcli/ne-certcli-x509enrollmentauthflags
-# https://docs.microsoft.com/en-us/dotnet/api/microsoft.hpc.scheduler.store.x509enrollmentauthflags
-# https://gist.github.com/ctkirkman/77729328070ee1e1057fa1e2a64121a5
 New-Variable -Option Constant -Name X509EnrollmentAuthFlags -Value  @{ 
     X509AuthNone = 0
     X509AuthAnonymous = 1
@@ -283,7 +260,6 @@ New-Variable -Option Constant -Name X509EnrollmentAuthFlags -Value  @{
     X509AuthCertificate = 8
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-x509certificateenrollmentcontext
 New-Variable -Option Constant -Name X509CertificateEnrollmentContext -Value  @{ 
     ContextNone = 0
     ContextUser = 1
@@ -291,7 +267,6 @@ New-Variable -Option Constant -Name X509CertificateEnrollmentContext -Value  @{
     ContextAdministratorForceMachine = 3
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509certificaterequestpkcs10-initializefromcertificate
 New-Variable -Option Constant -Name X509RequestInheritOptions -Value @{
     InheritDefault = 0x00000000
     InheritRenewalCertificateFlag = 0x00000020
@@ -301,7 +276,6 @@ New-Variable -Option Constant -Name X509RequestInheritOptions -Value @{
     InheritSubjectAltNameFlag = 0x00000200     
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/certenroll/ne-certenroll-enrollmentenrollstatus
 New-Variable -Option Constant -Name EnrollmentEnrollStatus -Value @{
     Enrolled = 0x00000001
     EnrollPended = 0x00000002
@@ -312,13 +286,11 @@ New-Variable -Option Constant -Name EnrollmentEnrollStatus -Value @{
     EnrollDenied = 0x00000100 
 }
 
-# https://docs.microsoft.com/bs-latn-ba/windows/win32/api/certenroll/ne-certenroll-innerrequestlevel
 New-Variable -Option Constant -Name InnerRequestLevel -Value @{
     LevelInnermost = 0
     LevelNext = 1
 }
 
-# https://docs.microsoft.com/en-us/windows/win32/api/taskschd/ne-taskschd-task_run_flags
 New-Variable -Option Constant -Name TaskRunFlags -Value @{
     TASK_RUN_NO_FLAGS = 0
     TASK_RUN_AS_SELF = 1
@@ -327,7 +299,6 @@ New-Variable -Option Constant -Name TaskRunFlags -Value @{
     TASK_RUN_USER_SID = 4
 }
 
-# https://tools.ietf.org/html/draft-nourse-scep-23#section-3.1.1.4
 New-Variable -Option Constant -Name SCEPFailInfo -Value @(
 
     @{
@@ -358,7 +329,7 @@ New-Variable -Option Constant -Name SCEPFailInfo -Value @(
 
 )
 
-# Built from the Error Codes I observed whilst testing Get-NDESCertificate
+# Built from the Error Codes I observed whilst testing Get-SCEPCertificate
 # Stored as String as this gets compared against a text that is returned from the API
 New-Variable -Option Constant -Name NDESErrorCode -Value @{
     CERT_E_WRONG_USAGE = "0x800b0110"
@@ -368,7 +339,6 @@ New-Variable -Option Constant -Name NDESErrorCode -Value @{
     RPC_S_SERVER_UNAVAILABLE = "0x800706ba"
 }
 
-# https://msdn.microsoft.com/en-us/library/windows/desktop/aa378132(v=vs.85).aspx
 New-Variable -Option Constant -Name EkuNameToOidTable -Value @{
     EnrollmentAgent = $Oid.XCN_OID_ENROLLMENT_AGENT
     ClientAuthentication = $Oid.XCN_OID_PKIX_KP_CLIENT_AUTH
@@ -453,3 +423,11 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\ConvertFrom-Base64ToPem.ps1
 . $ModuleRoot\Functions\ConvertFrom-PemToBase64.ps1
 . $ModuleRoot\Functions\New-SignedCms.ps1
+. $ModuleRoot\Functions\New-TemplateExtension.ps1
+. $ModuleRoot\Functions\Unregister-ComObject.ps1
+. $ModuleRoot\Functions\New-AkiExtension.ps1
+. $ModuleRoot\Functions\New-ApplicationPoliciesExtension.ps1
+. $ModuleRoot\Functions\New-BasicConstraintsExtension.ps1
+. $ModuleRoot\Functions\New-SmimeCapabilitiesExtension.ps1
+. $ModuleRoot\Functions\New-ExtendedKeyUsageExtension.ps1
+. $ModuleRoot\Functions\New-KeyUsageExtension.ps1

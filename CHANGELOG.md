@@ -1,5 +1,14 @@
 ﻿# Changelog for the PSCertificateEnrollment PowerShell Module
 
+## 1.0.12 (not yet released)
+
+- Add Support for ML-DSA key algorithms to `New-CertificateRequest`.
+- Add Support for ML-DSA key algorithms to `Get-SCEPCertificate`.
+- Add support to provide own CA Certificates and CACaps in `Get-SCEPCertificate`.
+- Removed all URLs from comments as some AV solutions seem to dislike this.
+- Drop support for Windows 8.1 / Server 2012 R2 and below.
+- Unify Key and CSR generation code between `New-CertificateRequest` and `Get-SCEPCertificate`.
+
 ## 1.0.11 (Jul 01, 2025)
 
 - New `Get-PGWYCertificate` Commandlet allows requesting certificates from [Nexus SmartID Certificate Manager](https://doc.nexusgroup.com/pub/certificate-manager-overview) and [Nexus Go](https://www.nexusgroup.com/solutions/online-services/) instances via the [Certificate Manager (CM) REST API](https://doc.nexusgroup.com/pub/certificate-manager-cm-rest-api).
@@ -34,7 +43,7 @@
 
 - `Get-IssuedCertificate` now supports request attributes.
 - Add StatusCodeInt property to `Get-IssuedCertificate` containing the HResult returned from the certificate authority as integer.
-- Add alias "Config" für ConfigurationString Argument to `Get-IssuedCertificate`.
+- Add alias "Config" for ConfigurationString Argument to `Get-IssuedCertificate`.
 - `New-CertificateRequest` now supports the newly introduced Security Identifier certificate extension.
 - `Get-NDESCertificate` now supports ECC keys.
 - `Get-NDESCertificate` now supports HTTP basic authentication.

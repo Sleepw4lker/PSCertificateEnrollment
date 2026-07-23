@@ -52,7 +52,6 @@ function New-SignedCertificateRequest {
 
     begin {
         # Signing a Certificate Request means wrapping the PKCS10 request inside a PKCS7 request
-        # https://docs.microsoft.com/en-us/windows/desktop/seccertenroll/certificate-request-functions
         $CertRequestPkcs10 = New-Object -ComObject X509Enrollment.CX509CertificateRequestPkcs10
         $CertRequestPkcs7 = New-Object -ComObject X509Enrollment.CX509CertificateRequestPkcs7
     }
@@ -60,7 +59,6 @@ function New-SignedCertificateRequest {
     process {
 
         # First we must load the given Certificate Request
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509certificaterequestpkcs10-initializedecode
         Try {
             $CertRequestPkcs10.InitializeDecode(
                 $CertificateRequest,
@@ -73,11 +71,9 @@ function New-SignedCertificateRequest {
         }
     
         # Build the PKCS#7 Message based on the PKCS#10 Certificate Request
-        # https://stackoverflow.com/questions/7824408/programmatically-communicating-with-a-certificate-authority
         $CertRequestPkcs7.InitializeFromInnerRequest($CertRequestPkcs10)
 
         # Create a Signer Certificate Structure
-        # https://msdn.microsoft.com/en-us/library/windows/desktop/aa376832(v=vs.85).aspx
         $SignerCertificate =  New-Object -ComObject X509Enrollment.CSignerCertificate
         $SignerCertificate.Initialize(
             [int]($SigningCert.PSParentPath -match "Machine"),
@@ -93,7 +89,6 @@ function New-SignedCertificateRequest {
         }
 
         # Specifying the Hashing Algorithm to use for the CMS message
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-iobjectid
         $HashAlgorithmObject = New-Object -ComObject X509Enrollment.CObjectId
         $HashAlgorithmObject.InitializeFromAlgorithmName(
             $ObjectIdGroupId.XCN_CRYPT_HASH_ALG_OID_GROUP_ID,
@@ -105,11 +100,9 @@ function New-SignedCertificateRequest {
         
         # The request is encoded by using Distinguished Encoding Rules (DER) as defined by the Abstract Syntax Notation One (ASN.1) standard. 
         # The encoding process creates a byte array. You can retrieve the byte array by calling the RawData property.
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509certificaterequest-encode
         $CertRequestPkcs7.Encode()
 
         # Return the signed Certificate Signing Request
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-ix509certificaterequest-get_rawdata
         "-----BEGIN PKCS #7 SIGNED DATA-----`n" + 
         $CertRequestPkcs7.RawData($RequestFlags.CR_OUT_BASE64) + 
         "-----END PKCS #7 SIGNED DATA-----"

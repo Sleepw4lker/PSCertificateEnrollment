@@ -2,7 +2,6 @@
     .SYNOPSIS
     Calculates the Hash Value for a given Byte Array (e.g. a DER encoded Certificate)
     The native GetCertHash seems only to work since .NET 4.8 which is not guaranteed to be present
-    https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate.getcerthash
 
     .PARAMETER Bytes
     The Byte Array to calculate the Hash Value for.
@@ -27,7 +26,6 @@ function Get-Hash {
         $HashAlgorithm = "SHA1"
     )
 
-    # https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.hashalgorithm
     $AlgorithmObject = [System.Security.Cryptography.HashAlgorithm]::Create($HashAlgorithm)
 
     $HashBytes = $AlgorithmObject.ComputeHash($Bytes)

@@ -43,7 +43,6 @@ function Invoke-AutoEnrollmentTask {
 
             $Task = $TaskScheduler.GetFolder("Microsoft\Windows\CertificateServicesClient").GetTask($TaskName)
 
-            # https://docs.microsoft.com/en-us/windows/win32/taskschd/registeredtask-runex
             [void]($Task.RunEx($null, $Flags, 0, $null))
 
             if ($Wait.IsPresent) {

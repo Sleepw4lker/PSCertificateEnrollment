@@ -106,11 +106,9 @@ Function Get-IssuedCertificate {
             }
         }
 
-        # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nn-certcli-icertrequest
         $CertRequest = New-Object -ComObject CertificateAuthority.Request
 
         # Configuring the Certificate Request Interface when using the WSTEP Protocol
-        # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest3-setcredential
         If ($ConfigString.StartsWith("https://")) { 
 
             # WSTEP with Username and Password Authentication
@@ -180,7 +178,6 @@ Function Get-IssuedCertificate {
 
             # Additional attributes can be specified here
 
-            # https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/certutil
             # Names and values must be colon separated, while multiple name, value pairs must be newline separated.
             # For example: CertificateTemplate:User\nEMail:User@Domain.com where the \n sequence is converted to a newline separator.
 
@@ -194,35 +191,17 @@ Function Get-IssuedCertificate {
                 $Flags = $Flags -bor $RequestFlags.CR_IN_MACHINE
             }
 
-            Try {
-                # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-submit
-                $Status = $CertRequest.Submit(
-                    $Flags,
-                    $CertificateRequest,
-                    $($RequestAttributes -join [Environment]::NewLine), # multiple name, value pairs must be newline separated.
-                    $ConfigString
-                )
-            }
-            Catch {
-                Write-Error -Message $PSItem.Exception.Message
-                return
-            }
+            $Status = $CertRequest.Submit(
+                $Flags,
+                $CertificateRequest,
+                $($RequestAttributes -join [Environment]::NewLine), # multiple name, value pairs must be newline separated.
+                $ConfigString
+            )
         }
 
         # Retrieve a pending Certificate Request
         If ($RequestId) {
-
-            Try {
-                # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-retrievepending
-                $Status = $CertRequest.RetrievePending(
-                    $RequestId,
-                    $ConfigString
-                )
-            }
-            Catch {
-                Write-Error -Message $PSItem.Exception.Message
-                return
-            }
+            $Status = $CertRequest.RetrievePending($RequestId, $ConfigString)
         }
 
         # Properly formatting Return Code and translate into a meaningful message
@@ -276,9 +255,7 @@ Function Get-IssuedCertificate {
             }
 
             $DispositionType.CR_DISP_ISSUED {
-
-                # https://docs.microsoft.com/en-us/windows/win32/api/certcli/nf-certcli-icertrequest-getcertificate
-                # https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate2.import
+                
                 $CertificateObject = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String(
                     $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64)
                 ))

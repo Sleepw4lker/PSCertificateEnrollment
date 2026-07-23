@@ -11,13 +11,11 @@ Function Get-KeyStorageProvider {
     param ()
 
     begin {
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nn-certenroll-icspinformations
         $KspList = New-Object -ComObject X509Enrollment.CCspInformations
     }
 
     process {
         # Populate the List
-        # https://docs.microsoft.com/en-us/windows/win32/api/certenroll/nf-certenroll-icspinformations-addavailablecsps
         $KspList.AddAvailableCsps()
 
         # Return the List
