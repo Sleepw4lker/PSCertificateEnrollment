@@ -13,17 +13,20 @@ function Get-EnrollmentPolicy {
         $MachineContext
     )
 
-    if ($MachineContext.IsPresent) {
-        $RegistryRoot = "HKLM:\Software\Microsoft\Cryptography\PolicyServers"
-    }
-    else {
-        $RegistryRoot = "HKCU:\Software\Microsoft\Cryptography\PolicyServers"
-    }
+    process {
 
-    if ($Identifier) {
-        Get-Item -Path "$RegistryRoot\$Identifier" -ErrorAction SilentlyContinue
-    }
-    else {
-        Get-ChildItem -Path $RegistryRoot -ErrorAction SilentlyContinue
+        if ($MachineContext.IsPresent) {
+            $RegistryRoot = "HKLM:\Software\Microsoft\Cryptography\PolicyServers"
+        }
+        else {
+            $RegistryRoot = "HKCU:\Software\Microsoft\Cryptography\PolicyServers"
+        }
+
+        if ($Identifier) {
+            Get-Item -Path "$RegistryRoot\$Identifier" -ErrorAction SilentlyContinue
+        }
+        else {
+            Get-ChildItem -Path $RegistryRoot -ErrorAction SilentlyContinue
+        }
     }
 }

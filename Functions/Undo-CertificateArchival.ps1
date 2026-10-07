@@ -31,8 +31,19 @@ Function Undo-CertificateArchival {
 
     process {
 
+        # A Cert: path like "Cert:\CurrentUser\My" arrives as an X509Store named after the whole path -
+        # that one is opened through the Cert: drive. A real X509Store object is used as it is.
+        $IsCertPath = $CertStoreLocation.Name -match '^Cert:\\'
+
+        If ($IsCertPath) {
+            $IsMachineStore = $CertStoreLocation.Name -match "LocalMachine"
+        }
+        Else {
+            $IsMachineStore = $CertStoreLocation.Location -eq [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine
+        }
+
         # Ensuring we work with Elevation when messing with the Computer Certificate Store
-        If ($CertStoreLocation.Name -match "LocalMachine") {
+        If ($IsMachineStore) {
     
             If (-not (
                 [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -42,25 +53,34 @@ Function Undo-CertificateArchival {
             }
         }
 
-        $CertificateStore = Get-Item -Path $CertStoreLocation.Name
+        If ($IsCertPath) {
+            $CertificateStore = Get-Item -Path $CertStoreLocation.Name
+        }
+        Else {
+            $CertificateStore = $CertStoreLocation
+        }
 
         $CertificateStore.Open('ReadWrite,IncludeArchived')
 
-        $CertificateStore.Certificates | Where-Object { ($_.Thumbprint -eq $Thumbprint) } | ForEach-Object -Process {
+        Try {
 
-            Write-Verbose -Message "Unarchiving Certificate with Thumbprint $Thumbprint"
+            $CertificateStore.Certificates | Where-Object { ($_.Thumbprint -eq $Thumbprint) } | ForEach-Object -Process {
 
-            Try {
-                $_.Archived = $False
+                Write-Verbose -Message "Unarchiving Certificate with Thumbprint $Thumbprint"
+
+                Try {
+                    $_.Archived = $False
+                }
+                Catch {
+                    Write-Error -Message $PSItem.Exception.Message
+                    return
+                }
+
             }
-            Catch {
-                Write-Error -Message $PSItem.Exception.Message
-                return  
-            }
-
         }
-
-        $CertificateStore.Close()
+        Finally {
+            $CertificateStore.Close()
+        }
 
     }
 

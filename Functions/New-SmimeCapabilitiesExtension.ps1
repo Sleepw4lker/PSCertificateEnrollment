@@ -30,7 +30,9 @@ function New-SmimeCapabilitiesExtension {
 
     try {
 
-        $Smime | ForEach-Object -Process {
+        # Capabilities are listed in order of preference (RFC 8551), so drop repeats but keep the order.
+        # ValidateSet is case-insensitive and all its values are lowercase, so normalize before comparing.
+        $Smime | ForEach-Object -Process { $_.ToLowerInvariant() } | Select-Object -Unique | ForEach-Object -Process {
 
             # The Bit length is only relevant for RC2 and RC4. We use the same defaults as Microsoft does.
             If ($_ -in ("rc2","rc2wrap","rc4")) { $BitCount = 128 } Else { $BitCount = 0 }

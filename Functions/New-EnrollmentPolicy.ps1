@@ -39,9 +39,7 @@ function New-EnrollmentPolicy {
 
         if ($MachineContext.IsPresent) {
 
-            If (-not (
-                [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-                ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+            If (-not (Test-IsElevated)) {
                 Write-Error -Message "This must be run with Elevation (Run as Administrator) when using the Machine Context!" 
                 return
             }
@@ -78,7 +76,10 @@ function New-EnrollmentPolicy {
 
         $EnrollmentServerUri = New-Object -TypeName System.Uri($Url)
         
-        $Response = [xml](Get-XCEPEnrollmentPolicy -ComputerName $EnrollmentServerUri.Host -Port $EnrollmentServerUri.Port -Suffix $EnrollmentServerUri.PathAndQuery.Replace("service.svc/CEP","").Trim("/") -ErrorAction Stop)
+        # URL paths are matched case-insensitively by the server, so "Service.svc/cep" is the same endpoint
+        $Suffix = ($EnrollmentServerUri.PathAndQuery -replace "service\.svc/CEP", "").Trim("/")
+
+        $Response = [xml](Get-XCEPEnrollmentPolicy -ComputerName $EnrollmentServerUri.Host -Port $EnrollmentServerUri.Port -Suffix $Suffix -ErrorAction Stop)
 
         $PolicyId = $Response.Envelope.Body.GetPoliciesResponse.response.policyID
         $FriendlyName = $Response.Envelope.Body.GetPoliciesResponse.response.policyFriendlyName

@@ -36,7 +36,8 @@ function New-ExtendedKeyUsageExtension {
 
     try {
 
-        $Eku | Sort-Object | Get-Unique | ForEach-Object -Process {
+        # Get-Unique is case-sensitive but ValidateSet is not, so dedupe with Sort-Object -Unique instead
+        $Eku | Sort-Object -Unique | ForEach-Object -Process {
 
             $OidObject = New-Object -ComObject X509Enrollment.CObjectId
             $OidObject.InitializeFromValue($EkuNameToOidTable[$_])

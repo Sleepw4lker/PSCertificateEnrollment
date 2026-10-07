@@ -126,7 +126,7 @@ New-CertificateRequest -MachineContext -LeyLength 3072 -Subject "CN=dc01.mydomai
 #### Example: Creating a Certificate Signing Request (CSR) for a Web Server Certificate, using an ECDSA Key, containing multiple SANs of Type DnsName and IPAdress (and an empty Subject String)
 
 ```powershell
-New-CertificateRequest -Eku ServerAuth -Dns "web1.mydomain.local","web2.mydomain.local","web3.mydomain.local" -IP "192.168.0.1" -KeyAlgorithm ECDSA_P256 | Out-File -Path CertificateRequestFile.csr -Encoding ascii
+New-CertificateRequest -Eku ServerAuth -Dns "web1.mydomain.local","web2.mydomain.local","web3.mydomain.local" -IP "192.0.2.1" -KeyAlgorithm ECDSA_P256 | Out-File -Path CertificateRequestFile.csr -Encoding ascii
 ```
 
 #### Example: Creating a Certificate Signing Request (CSR) for an OCSP Responder, specifying the signing CA Certificate to be used via Authority Key Identifier (AKI) and a Hardware Security Module (HSM) Key Storage Provider (KSP)

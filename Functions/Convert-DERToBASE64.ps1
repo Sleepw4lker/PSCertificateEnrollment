@@ -7,7 +7,7 @@ Function Convert-DERToBASE64 {
     [cmdletbinding()]
     param (
         [Parameter(Mandatory=$True)]
-        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^([0-9a-fA-F]{2})+$")]
         [string]
         $String
     )

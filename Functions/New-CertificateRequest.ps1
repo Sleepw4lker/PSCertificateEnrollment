@@ -13,10 +13,17 @@
     Specifies the Subject DN for the Certificate.
     May be left empty if you specify a DnsName, Upn or IP instead.
 
+    .PARAMETER CertificateTemplate
+    Specifies the Object Identifier of a Certificate Template to be written into the Certificate Template Information Extension.
+
     .PARAMETER Eku
     Specifies or or more Enhanced Key Usage to be included in the Certificate Request.
     They get identified by their Friendly Name.
     Especially useful when creating a Certificate with the Cmdlet.
+
+    .PARAMETER AppPolicy
+    Specifies one or more Application Policies to be included in the Certificate Request.
+    They get identified by their Friendly Name.
 
     .PARAMETER Dns
     Specifies one or more DNS Names to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
@@ -654,8 +661,16 @@ Function New-CertificateRequest {
 
         $X509Extensions.Add($Oid.szOID_KEY_USAGE, $(New-KeyUsageExtension -KeyUsage $KeyUsage))
 
+        If ($CertificateTemplate) {
+            $X509Extensions.Add($Oid.szOID_CERTIFICATE_TEMPLATE, $(New-TemplateExtension -ObjectIdentifier $CertificateTemplate))
+        }
+
         If ($Eku) {
             $X509Extensions.Add($Oid.XCN_OID_ENHANCED_KEY_USAGE, $(New-ExtendedKeyUsageExtension -Eku $Eku))
+        }
+
+        If ($AppPolicy) {
+            $X509Extensions.Add($Oid.szOID_APPLICATION_CERT_POLICIES, $(New-ApplicationPoliciesExtension -ApplicationPolicies $AppPolicy))
         }
 
         If ($Smime) {

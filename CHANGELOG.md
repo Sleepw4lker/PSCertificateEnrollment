@@ -1,6 +1,6 @@
 ﻿# Changelog for the PSCertificateEnrollment PowerShell Module
 
-## 1.0.12 (not yet released)
+## 1.0.12 (Oct 07, 2026)
 
 - Add Support for ML-DSA key algorithms to `New-CertificateRequest`.
 - Add Support for ML-DSA key algorithms to `Get-SCEPCertificate`.

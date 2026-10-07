@@ -32,7 +32,10 @@ Function Get-ESTCACertificates {
             return
         }
 
-        if ($Response.Headers["Content-Type"] -ne "application/pkcs7-mime") {
+        # Only the media type counts - servers differ in the parameters they add (e.g. smime-type=certs-only) and how they space them
+        $MediaType = ("$($Response.Headers["Content-Type"])" -split ";")[0].Trim()
+
+        if ($MediaType -ne "application/pkcs7-mime") {
             Write-Error "Got response as $($Response.Headers["Content-Type"]), which is not compliant to RFC 7030."
             return
         }

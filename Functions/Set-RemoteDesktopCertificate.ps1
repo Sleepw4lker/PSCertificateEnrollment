@@ -35,21 +35,21 @@ function Set-RemoteDesktopCertificate {
 
     process {
 
-        If (-not (
-            [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-            ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+        If (-not (Test-IsElevated)) {
             Write-Error -Message "This must be run with Elevation (Run as Administrator)!" 
             return
         }
 
         Try {
 
+            # Stop, so a failure ends up in the Catch block instead of being reported as success
             $TerminalServicesConfig = Get-CimInstance `
                 -ClassName "Win32_TSGeneralSetting" `
                 -Namespace root\cimv2\terminalservices `
-                -Filter "TerminalName='RDP-tcp'"
+                -Filter "TerminalName='RDP-tcp'" `
+                -ErrorAction Stop
 
-            [void](Set-CimInstance -CimInstance $TerminalServicesConfig -Property @{SSLCertificateSHA1Hash="$($Certificate.Thumbprint)"})
+            [void](Set-CimInstance -CimInstance $TerminalServicesConfig -Property @{SSLCertificateSHA1Hash="$($Certificate.Thumbprint)"} -ErrorAction Stop)
 
             return $True
 

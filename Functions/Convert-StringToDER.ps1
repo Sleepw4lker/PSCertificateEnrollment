@@ -20,7 +20,7 @@ Function Convert-StringToDER {
     process {
 
         # Length of hex fqdn, in hex
-        $LengthOctets = Get-Asn1LengthOctets -strLen $($ContentOctets.Length)
+        $LengthOctets = Get-Asn1LengthOctets -HexStringLength $($ContentOctets.Length)
 
         # Constructed, definite-length method
         # This method applies to simple string types, structured types, types derived simple

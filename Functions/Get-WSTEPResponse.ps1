@@ -44,7 +44,13 @@ Function Get-WSTEPResponse {
 
     process {
 
-        $Uri = "https://$($ComputerName)/$($Suffix)/service.svc/CES"
+        # The default port stays out of the URI, so the a:To header is the same as it always was for port 443
+        If ($Port -eq 443) {
+            $Uri = "https://$($ComputerName)/$($Suffix)/service.svc/CES"
+        }
+        else {
+            $Uri = "https://$($ComputerName):$($Port)/$($Suffix)/service.svc/CES"
+        }
 
         $Headers = @{
             "Content-Type" = "application/soap+xml; charset=utf-8"
@@ -52,7 +58,7 @@ Function Get-WSTEPResponse {
 
         If ($CertificateTemplate) {
 
-            $AdditionalContext = "<ContextItem Name=`"CertificateTemplate`"><Value>$CertificateTemplate</Value></ContextItem>"
+            $AdditionalContext = "<ContextItem Name=`"CertificateTemplate`"><Value>$([System.Security.SecurityElement]::Escape($CertificateTemplate))</Value></ContextItem>"
 
         }
         else {

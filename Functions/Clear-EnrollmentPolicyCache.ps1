@@ -11,9 +11,7 @@ function Clear-EnrollmentPolicyCache {
 
     if ($MachineContext.IsPresent) {
 
-        If (-not (
-            [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-            ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+        If (-not (Test-IsElevated)) {
             Write-Error -Message "This must be run with Elevation (Run as Administrator) when using the Machine Context!" 
             return
         }
@@ -25,6 +23,11 @@ function Clear-EnrollmentPolicyCache {
         $Path = "$env:USERPROFILE\AppData\Local\Microsoft\Windows\X509Enrollment"
     }
     
+    # No cache folder yet means there is nothing to clear
+    if (-not (Test-Path -Path $Path)) {
+        return
+    }
+
     Get-ChildItem -Path $Path | ForEach-Object -Process {
         Write-Verbose -Message "Deleting $($_.FullName)"
         $_ | Remove-Item -Force

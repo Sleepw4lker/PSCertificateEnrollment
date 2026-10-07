@@ -2,7 +2,7 @@
 
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False)]
+        [Parameter(Mandatory=$True)]
         [ValidatePattern("^[0-9a-fA-F]{1,100}$")] # Why 100?
         [String]
         $SerialNumber

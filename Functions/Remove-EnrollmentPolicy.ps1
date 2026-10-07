@@ -19,9 +19,7 @@ function Remove-EnrollmentPolicy {
 
         if ($MachineContext.IsPresent) {
 
-            If (-not (
-                [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-                ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+            If (-not (Test-IsElevated)) {
                 Write-Error -Message "This must be run with Elevation (Run as Administrator) when using the Machine Context!" 
                 return
             }

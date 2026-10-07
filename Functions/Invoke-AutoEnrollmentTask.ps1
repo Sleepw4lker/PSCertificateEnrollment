@@ -19,9 +19,7 @@ function Invoke-AutoEnrollmentTask {
         # Ensuring we work with Elevation when messing with the Computer Certificate Store
         If ($MachineContext.IsPresent) {
     
-            If (-not (
-                [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-                ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+            If (-not (Test-IsElevated)) {
                 Write-Error -Message "This must be run with Elevation (Run as Administrator) when using the Machine Context!" 
                 return
             }
@@ -59,8 +57,9 @@ function Invoke-AutoEnrollmentTask {
             return
         }
         Finally {
-            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($Task))
-            [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($TaskScheduler))
+            # Either may still be $null here when something failed early - Unregister-ComObject skips those
+            $Task | Unregister-ComObject
+            $TaskScheduler | Unregister-ComObject
         }
     }
 

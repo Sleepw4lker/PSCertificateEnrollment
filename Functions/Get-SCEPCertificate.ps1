@@ -32,6 +32,27 @@
     Specifies or more IP Addresses to be written into the Subject Alternative Name (SAN) Extension of the Certificate Request.
     May be left Empty if you specify a Subject, DnsName or Upn instead.
 
+    .PARAMETER CertificateTemplate
+    Specifies the Object Identifier of a Certificate Template to be written into the Certificate Template Information Extension of the Certificate Request.
+
+    .PARAMETER Eku
+    Specifies one or more Enhanced Key Usages to be included in the Certificate Request.
+    They get identified by their Friendly Name.
+
+    .PARAMETER AppPolicy
+    Specifies one or more Application Policies to be included in the Certificate Request.
+    They get identified by their Friendly Name.
+
+    .PARAMETER KeyUsage
+    Specifies the Key Usage to be included in the Certificate Request.
+    Unlike New-CertificateRequest, no Key Usage Extension is included unless specified.
+
+    .PARAMETER Smime
+    Specifies the S/MIME Capabilities the requestor supports.
+
+    .PARAMETER Sid
+    Specifies a Security Identifier to be written into the szOID_NTDS_CA_SECURITY_EXT Extension of the Certificate Request.
+
     .PARAMETER ChallengePassword
     Specifies the Challenge Password used to authenticate to the SCEP Server.
     Not necessary if the SCEP Server doesn't require a Password, or if you specify a SigningCert.
@@ -72,6 +93,11 @@
     .PARAMETER Method
     Specifies if the Certificate Submission shall be done with HTTP "GET" or "POST".
     Defaults to "POST".
+
+    .NOTES
+    CertificateTemplate, Eku, AppPolicy, KeyUsage, Smime and Sid only add Extensions to the Certificate Request.
+    Whether they make it into the issued Certificate is up to the SCEP Server and the CA behind it.
+    They cannot be combined with SigningCert, as a Renewal inherits its Extensions from that Certificate.
 
     .OUTPUTS
     System.Security.Cryptography.X509Certificates.X509Certificate. Returns the issued Certificate returned by the SCEP Server.
@@ -140,6 +166,132 @@ Function Get-SCEPCertificate {
         [ValidateNotNullOrEmpty()]
         [System.Net.IPAddress[]]
         $IP,
+
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
+        [ValidatePattern("^([0-2])((\.0)|(\.[1-9][0-9]*))*$")]
+        [String]
+        $CertificateTemplate,
+
+        [Alias("EnhancedKeyUsage")]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
+        [ValidateSet(
+            "EnrollmentAgent",
+            "ClientAuthentication",
+            "CodeSigning",
+            "LifeTimeSigning",
+            "DocumentSigning",
+            "DocumentEncryption",
+            "EncryptingFileSystem",
+            "FileRecovery",
+            "IPSecEndSystem",
+            "IPSecIKEIntermediate",
+            "IPSecTunnelEndpoint",
+            "IPSecUser",
+            "KeyRecovery",
+            "KDCAuthentication",
+            "SecureEmail",
+            "ServerAuthentication",
+            "SmartCardLogon",
+            "TimeStamping",
+            "OCSPSigning",
+            "RemoteDesktopAuthentication",
+            "PrivateKeyArchival"
+            )]
+        [String[]]
+        $Eku,
+
+        [Alias("ApplicationPolicy")]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
+        [ValidateSet(
+            "EnrollmentAgent",
+            "ClientAuthentication",
+            "CodeSigning",
+            "LifeTimeSigning",
+            "DocumentSigning",
+            "DocumentEncryption",
+            "EncryptingFileSystem",
+            "FileRecovery",
+            "IPSecEndSystem",
+            "IPSecIKEIntermediate",
+            "IPSecTunnelEndpoint",
+            "IPSecUser",
+            "KeyRecovery",
+            "KDCAuthentication",
+            "SecureEmail",
+            "ServerAuthentication",
+            "SmartCardLogon",
+            "TimeStamping",
+            "OCSPSigning",
+            "RemoteDesktopAuthentication",
+            "PrivateKeyArchival"
+            )]
+        [String[]]
+        $AppPolicy,
+
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
+        [ValidateSet(
+            "CrlSign",
+            "DataEncipherment",
+            "DecipherOnly",
+            "DigitalSignature",
+            "EncipherOnly",
+            "KeyAgreement",
+            "KeyCertSign",
+            "KeyEncipherment",
+            "None",
+            "NonRepudiation"
+            )]
+        [String[]]
+        $KeyUsage,
+
+        [Alias("SmimeCapabilities")]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
+        [ValidateSet(
+            "des",
+            "des3",
+            "rc2",
+            "rc4",
+            "des3wrap",
+            "rc2wrap",
+            "aes128",
+            "aes192",
+            "aes256",
+            "aes128wrap",
+            "aes192wrap",
+            "aes256wrap",
+            "md5",
+            "sha1",
+            "sha256",
+            "sha384",
+            "sha512"
+            )]
+        [String[]]
+        $Smime,
+
+        [Alias("SecurityIdentifier")]
+        [Parameter(
+            ParameterSetName="NewRequest",
+            Mandatory=$False
+            )]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^S-1-5-21-[0-9]*-[0-9]*-[0-9]*-[0-9]*$")]
+        [String]
+        $Sid,
 
         [Parameter(
             ParameterSetName="NewRequest",
@@ -461,6 +613,49 @@ Function Get-SCEPCertificate {
                 # Adding the Extension to the Certificate
                 $CertificateRequestPkcs10.X509Extensions.Add($SubjectAlternativeNamesExtension)
         
+            }
+
+            $X509Extensions = @{}
+
+            If ($CertificateTemplate) {
+                $X509Extensions.Add($Oid.szOID_CERTIFICATE_TEMPLATE, $(New-TemplateExtension -ObjectIdentifier $CertificateTemplate))
+            }
+
+            If ($KeyUsage) {
+                $X509Extensions.Add($Oid.szOID_KEY_USAGE, $(New-KeyUsageExtension -KeyUsage $KeyUsage))
+            }
+
+            If ($Eku) {
+                $X509Extensions.Add($Oid.XCN_OID_ENHANCED_KEY_USAGE, $(New-ExtendedKeyUsageExtension -Eku $Eku))
+            }
+
+            If ($AppPolicy) {
+                $X509Extensions.Add($Oid.szOID_APPLICATION_CERT_POLICIES, $(New-ApplicationPoliciesExtension -ApplicationPolicies $AppPolicy))
+            }
+
+            If ($Smime) {
+                $X509Extensions.Add($Oid.SmimeCapabilities, $(New-SmimeCapabilitiesExtension -Smime $Smime))
+            }
+
+            If ($Sid) {
+                $X509Extensions.Add($Oid.szOID_NTDS_CA_SECURITY_EXT, $(New-SidExtension -Sid $Sid))
+            }
+
+            $X509Extensions.GetEnumerator() | ForEach-Object -Process {
+
+                $X509Extension = New-Object -ComObject X509Enrollment.CX509Extension
+                $X509ExtensionOid = New-Object -ComObject X509Enrollment.CObjectId
+
+                try {
+                    $X509ExtensionOid.InitializeFromValue($_.Key)
+                    $X509Extension.Critical = $False
+                    $X509Extension.Initialize($X509ExtensionOid, $EncodingType.XCN_CRYPT_STRING_BASE64, $_.Value)
+                    $CertificateRequestPkcs10.X509Extensions.Add($X509Extension)
+                }
+                finally {
+                    $X509Extension | Unregister-ComObject
+                    $X509ExtensionOid | Unregister-ComObject
+                }
             }
 
             If ($ChallengePassword) {

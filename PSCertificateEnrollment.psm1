@@ -431,3 +431,4 @@ $ModuleRoot = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 . $ModuleRoot\Functions\New-SmimeCapabilitiesExtension.ps1
 . $ModuleRoot\Functions\New-ExtendedKeyUsageExtension.ps1
 . $ModuleRoot\Functions\New-KeyUsageExtension.ps1
+. $ModuleRoot\Functions\Test-IsElevated.ps1

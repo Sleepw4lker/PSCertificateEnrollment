@@ -58,9 +58,15 @@ Function Get-ESTCertificate {
             #>
 
             $Username = $Credential.UserName
-            $Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
-            )
+
+            # Zero the unmanaged copy of the password again as soon as it has been read
+            $PasswordBstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+            try {
+                $Password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($PasswordBstr)
+            }
+            finally {
+                [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($PasswordBstr)
+            }
 
             $EncodedCredentials = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$($Username):$($Password)"))
 
@@ -121,7 +127,10 @@ Function Get-ESTCertificate {
         issued. The HTTP content-type of "application/pkcs7-mime" with an smime-type parameter "certs-only" is used, as specified in [RFC5273].
         #>
 
-        if ($Response.Headers["Content-Type"] -ne "application/pkcs7-mime; smime-type=certs-only") {
+        # Only the media type counts - servers differ in the parameters they add and how they space them
+        $MediaType = ("$($Response.Headers["Content-Type"])" -split ";")[0].Trim()
+
+        if ($MediaType -ne "application/pkcs7-mime") {
             Write-Error "Got response as $($Response.Headers["Content-Type"]), which is not compliant to RFC 7030."
             return
         }

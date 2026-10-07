@@ -98,9 +98,7 @@ Function Get-IssuedCertificate {
         # Ensuring we work with Elevation when using the machine identity
         If ($MachineContext.IsPresent) {
 
-            If (-not (
-                [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-                ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+            If (-not (Test-IsElevated)) {
                 Write-Error -Message "This must be run with Elevation (Run as Administrator) when using the Machine Context!" 
                 return
             }
@@ -108,220 +106,229 @@ Function Get-IssuedCertificate {
 
         $CertRequest = New-Object -ComObject CertificateAuthority.Request
 
-        # Configuring the Certificate Request Interface when using the WSTEP Protocol
-        If ($ConfigString.StartsWith("https://")) { 
+        try {
 
-            # WSTEP with Username and Password Authentication
-            If ($ConfigString.EndsWith(
-                "UsernamePassword/service.svc/CES", 
-                [System.StringComparison]::OrdinalIgnoreCase
-                )) {
+            # Configuring the Certificate Request Interface when using the WSTEP Protocol
+            If ($ConfigString.StartsWith("https://", [System.StringComparison]::OrdinalIgnoreCase)) {
 
-                If ($Credential) {
+                # WSTEP with Username and Password Authentication
+                If ($ConfigString.EndsWith(
+                    "UsernamePassword/service.svc/CES", 
+                    [System.StringComparison]::OrdinalIgnoreCase
+                    )) {
 
-                    $CertRequest.SetCredential(
-                        [Int]$null, # no Window Handle
-                        $X509EnrollmentAuthFlags.X509AuthUsername,
-                        $Credential.UserName,
-                        [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                            [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+                    If ($Credential) {
+
+                        # Zero the unmanaged copy of the password again as soon as it has been read
+                        $PasswordBstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+                        try {
+                            $CertRequest.SetCredential(
+                                [Int]$null, # no Window Handle
+                                $X509EnrollmentAuthFlags.X509AuthUsername,
+                                $Credential.UserName,
+                                [Runtime.InteropServices.Marshal]::PtrToStringBSTR($PasswordBstr)
+                            )
+                        }
+                        finally {
+                            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($PasswordBstr)
+                        }
+
+                    }
+                    Else {
+                        Write-Error -Message "You must provide Authentication Credentials."
+                        return
+                    }
+                }
+
+                # WSTEP with Client Certificate Authentication
+                If ($ConfigString.EndsWith(
+                    "Certificate/service.svc/CES", 
+                    [System.StringComparison]::OrdinalIgnoreCase
+                    )) {
+
+                    If ($ClientCertificate) {
+
+                        $CertRequest.SetCredential(
+                            [Int]$null, # no Window Handle
+                            $X509EnrollmentAuthFlags.X509AuthCertificate,
+                            $ClientCertificate,
+                            [String]::Empty
                         )
-                    )
 
+                    }
+                    Else {
+                        Write-Error -Message "You must provide a Client Authentication Certificate Thumbprint."
+                        return
+                    }
                 }
-                Else {
-                    Write-Error -Message "You must provide Authentication Credentials."
-                    return
-                }
-            }
 
-            # WSTEP with Client Certificate Authentication
-            If ($ConfigString.EndsWith(
-                "Certificate/service.svc/CES", 
-                [System.StringComparison]::OrdinalIgnoreCase
-                )) {
-
-                If ($ClientCertificate) {
-
+                # WSTEP with Kerberos Authentication
+                If ($ConfigString.EndsWith(
+                    "Kerberos/service.svc/CES", 
+                    [System.StringComparison]::OrdinalIgnoreCase
+                    )) {
+    
                     $CertRequest.SetCredential(
                         [Int]$null, # no Window Handle
-                        $X509EnrollmentAuthFlags.X509AuthCertificate,
-                        $ClientCertificate,
+                        $X509EnrollmentAuthFlags.X509AuthKerberos,
+                        [String]::Empty,
                         [String]::Empty
                     )
 
                 }
-                Else {
-                    Write-Error -Message "You must provide a Client Authentication Certificate Thumbprint."
-                    return
+            }
+
+            # Submit a Certificate Request
+            If ($CertificateRequest) {
+
+                # Additional attributes can be specified here
+
+                # Names and values must be colon separated, while multiple name, value pairs must be newline separated.
+                # For example: CertificateTemplate:User\nEMail:User@Domain.com where the \n sequence is converted to a newline separator.
+
+                If ($CertificateTemplate) {
+                    $RequestAttributes += "CertificateTemplate:$($CertificateTemplate)" # Names and values must be colon separated
                 }
-            }
 
-            # WSTEP with Kerberos Authentication
-            If ($ConfigString.EndsWith(
-                "Kerberos/service.svc/CES", 
-                [System.StringComparison]::OrdinalIgnoreCase
-                )) {
-    
-                $CertRequest.SetCredential(
-                    [Int]$null, # no Window Handle
-                    $X509EnrollmentAuthFlags.X509AuthKerberos,
-                    [String]::Empty,
-                    [String]::Empty
-                )
-
-            }
-        }
-
-        # Submit a Certificate Request
-        If ($CertificateRequest) {
-
-            # Additional attributes can be specified here
-
-            # Names and values must be colon separated, while multiple name, value pairs must be newline separated.
-            # For example: CertificateTemplate:User\nEMail:User@Domain.com where the \n sequence is converted to a newline separator.
-
-            If ($CertificateTemplate) {
-                $RequestAttributes += "CertificateTemplate:$($CertificateTemplate)" # Names and values must be colon separated
-            }
-
-            $Flags = $RequestFlags.CR_IN_ENCODEANY
+                $Flags = $RequestFlags.CR_IN_ENCODEANY
             
-            If ($MachineContext.IsPresent) {
-                $Flags = $Flags -bor $RequestFlags.CR_IN_MACHINE
-            }
-
-            $Status = $CertRequest.Submit(
-                $Flags,
-                $CertificateRequest,
-                $($RequestAttributes -join [Environment]::NewLine), # multiple name, value pairs must be newline separated.
-                $ConfigString
-            )
-        }
-
-        # Retrieve a pending Certificate Request
-        If ($RequestId) {
-            $Status = $CertRequest.RetrievePending($RequestId, $ConfigString)
-        }
-
-        # Properly formatting Return Code and translate into a meaningful message
-        $StatusCode = "0x" + ('{0:x}' -f $CertRequest.GetLastStatus())
-        $StatusCodeInt = $CertRequest.GetLastStatus()
-        $StatusMessage = (New-Object System.ComponentModel.Win32Exception($CertRequest.GetLastStatus())).Message
-
-        # Process the Submission Result and return it
-        Switch ($Status) {
-
-            $DispositionType.CR_DISP_INCOMPLETE {
-
-                [PSCustomObject]@{
-                    RequestId = $CertRequest.GetRequestId()
-                    Disposition = $Status
-                    Result = "Request is incomplete"
-                    StatusCode = $StatusCode
-                    StatusCodeInt = $StatusCodeInt
-                    StatusMessage = $StatusMessage
-                    Certificate = $null
-                    RawCertificate = $null
+                If ($MachineContext.IsPresent) {
+                    $Flags = $Flags -bor $RequestFlags.CR_IN_MACHINE
                 }
+
+                $Status = $CertRequest.Submit(
+                    $Flags,
+                    $CertificateRequest,
+                    $($RequestAttributes -join [Environment]::NewLine), # multiple name, value pairs must be newline separated.
+                    $ConfigString
+                )
             }
+
+            # Retrieve a pending Certificate Request
+            If ($RequestId) {
+                $Status = $CertRequest.RetrievePending($RequestId, $ConfigString)
+            }
+
+            # Properly formatting Return Code and translate into a meaningful message
+            $StatusCode = "0x" + ('{0:x}' -f $CertRequest.GetLastStatus())
+            $StatusCodeInt = $CertRequest.GetLastStatus()
+            $StatusMessage = (New-Object System.ComponentModel.Win32Exception($CertRequest.GetLastStatus())).Message
+
+            # Process the Submission Result and return it
+            Switch ($Status) {
+
+                $DispositionType.CR_DISP_INCOMPLETE {
+
+                    [PSCustomObject]@{
+                        RequestId = $CertRequest.GetRequestId()
+                        Disposition = $Status
+                        Result = "Request is incomplete"
+                        StatusCode = $StatusCode
+                        StatusCodeInt = $StatusCodeInt
+                        StatusMessage = $StatusMessage
+                        Certificate = $null
+                        RawCertificate = $null
+                    }
+                }
            
-            $DispositionType.CR_DISP_ERROR {
+                $DispositionType.CR_DISP_ERROR {
 
-                [PSCustomObject]@{
-                    RequestId = $CertRequest.GetRequestId()
-                    Disposition = $Status
-                    Result = "There was an error during submission"
-                    StatusCode = $StatusCode
-                    StatusCodeInt = $StatusCodeInt
-                    StatusMessage = $StatusMessage
-                    Certificate = $null
-                    RawCertificate = $null
+                    [PSCustomObject]@{
+                        RequestId = $CertRequest.GetRequestId()
+                        Disposition = $Status
+                        Result = "There was an error during submission"
+                        StatusCode = $StatusCode
+                        StatusCodeInt = $StatusCodeInt
+                        StatusMessage = $StatusMessage
+                        Certificate = $null
+                        RawCertificate = $null
+                    }
                 }
-            }
 
-            $DispositionType.CR_DISP_DENIED {
+                $DispositionType.CR_DISP_DENIED {
 
-                [PSCustomObject]@{
-                    RequestId = $CertRequest.GetRequestId()
-                    Disposition = $Status
-                    Result = "Request was denied"
-                    StatusCode = $StatusCode
-                    StatusCodeInt = $StatusCodeInt
-                    StatusMessage = $StatusMessage
-                    Certificate = $null
-                    RawCertificate = $null
+                    [PSCustomObject]@{
+                        RequestId = $CertRequest.GetRequestId()
+                        Disposition = $Status
+                        Result = "Request was denied"
+                        StatusCode = $StatusCode
+                        StatusCodeInt = $StatusCodeInt
+                        StatusMessage = $StatusMessage
+                        Certificate = $null
+                        RawCertificate = $null
+                    }
                 }
-            }
 
-            $DispositionType.CR_DISP_ISSUED {
+                $DispositionType.CR_DISP_ISSUED {
                 
-                $CertificateObject = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String(
-                    $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64)
-                ))
+                    $CertificateObject = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String(
+                        $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64)
+                    ))
 
-                [PSCustomObject]@{
-                    RequestId = $CertRequest.GetRequestId()
-                    Disposition = $Status
-                    Result = "Certificate was issued"
-                    StatusCode = $StatusCode
-                    StatusCodeInt = $StatusCodeInt
-                    StatusMessage = $StatusMessage
-                    Certificate = $CertificateObject
-                    RawCertificate = $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64HEADER)
+                    [PSCustomObject]@{
+                        RequestId = $CertRequest.GetRequestId()
+                        Disposition = $Status
+                        Result = "Certificate was issued"
+                        StatusCode = $StatusCode
+                        StatusCodeInt = $StatusCodeInt
+                        StatusMessage = $StatusMessage
+                        Certificate = $CertificateObject
+                        RawCertificate = $CertRequest.GetCertificate($RequestFlags.CR_OUT_BASE64HEADER)
+                    }
                 }
-            }
 
-            $DispositionType.CR_DISP_ISSUED_OUT_OF_BAND {
+                $DispositionType.CR_DISP_ISSUED_OUT_OF_BAND {
 
-                [PSCustomObject]@{
-                    RequestId = $CertRequest.GetRequestId()
-                    Disposition = $Status
-                    Result = "Certificate was issued out of band"
-                    StatusCode = $StatusCode
-                    StatusCodeInt = $StatusCodeInt
-                    StatusMessage = $StatusMessage
-                    Certificate = $null
-                    RawCertificate = $null
+                    [PSCustomObject]@{
+                        RequestId = $CertRequest.GetRequestId()
+                        Disposition = $Status
+                        Result = "Certificate was issued out of band"
+                        StatusCode = $StatusCode
+                        StatusCodeInt = $StatusCodeInt
+                        StatusMessage = $StatusMessage
+                        Certificate = $null
+                        RawCertificate = $null
+                    }
                 }
-            }
 
-            $DispositionType.CR_DISP_UNDER_SUBMISSION {
+                $DispositionType.CR_DISP_UNDER_SUBMISSION {
                 
-                [PSCustomObject]@{
-                    RequestId = $CertRequest.GetRequestId()
-                    Disposition = $Status
-                    Result = "Request was taken under submission"
-                    StatusCode = $StatusCode
-                    StatusCodeInt = $StatusCodeInt
-                    StatusMessage = $StatusMessage
-                    Certificate = $null
-                    RawCertificate = $null
+                    [PSCustomObject]@{
+                        RequestId = $CertRequest.GetRequestId()
+                        Disposition = $Status
+                        Result = "Request was taken under submission"
+                        StatusCode = $StatusCode
+                        StatusCodeInt = $StatusCodeInt
+                        StatusMessage = $StatusMessage
+                        Certificate = $null
+                        RawCertificate = $null
+                    }
                 }
-            }
 
-            $DispositionType.CR_DISP_REVOKED {
+                $DispositionType.CR_DISP_REVOKED {
 
-                [PSCustomObject]@{
-                    RequestId = $CertRequest.GetRequestId()
-                    Disposition = $Status
-                    Result = "Certificate has been revoked"
-                    StatusCode = $StatusCode
-                    StatusCodeInt = $StatusCodeInt
-                    StatusMessage = $StatusMessage
-                    Certificate = $null
-                    RawCertificate = $null
+                    [PSCustomObject]@{
+                        RequestId = $CertRequest.GetRequestId()
+                        Disposition = $Status
+                        Result = "Certificate has been revoked"
+                        StatusCode = $StatusCode
+                        StatusCodeInt = $StatusCodeInt
+                        StatusMessage = $StatusMessage
+                        Certificate = $null
+                        RawCertificate = $null
+                    }
                 }
-            }
 
-            # This should never happen, but just to be on the safe side
-            default{
-                Write-Error -Message "Retrieved unsupported Disposition Code $Status from the Certification Authority."
-            }
+                # This should never happen, but just to be on the safe side
+                default{
+                    Write-Error -Message "Retrieved unsupported Disposition Code $Status from the Certification Authority."
+                }
 
+            }
         }
-
-        [void]([System.Runtime.Interopservices.Marshal]::ReleaseComObject($CertRequest))
+        finally {
+            $CertRequest | Unregister-ComObject
+        }
 
     }
     

@@ -7,5 +7,6 @@ function ConvertFrom-PemToBase64 {
         [string]$String
     )
 
-    return $String -replace "-----.*-----", "" -replace "\r", "" -replace "\n", ""
+    # Each armor line on its own, so the Base64 between them survives even when everything is on one line
+    return $String -replace "-----(BEGIN|END) [^-]+-----", "" -replace "\s", ""
 }

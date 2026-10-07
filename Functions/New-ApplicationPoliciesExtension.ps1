@@ -35,7 +35,8 @@ function New-ApplicationPoliciesExtension {
 
         $ApplicationPolicyOids = New-Object -ComObject X509Enrollment.CCertificatePolicies.1
         
-        $ApplicationPolicies | Sort-Object | Get-Unique | ForEach-Object -Process {
+        # Get-Unique is case-sensitive but ValidateSet is not, so dedupe with Sort-Object -Unique instead
+        $ApplicationPolicies | Sort-Object -Unique | ForEach-Object -Process {
         
             $ApplicationPolicyOid = New-Object -ComObject X509Enrollment.CObjectId
             $ApplicationPolicyOid.InitializeFromValue($EkuNameToOidTable[$_])
